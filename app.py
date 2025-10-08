@@ -572,9 +572,26 @@ def fetch_market_data(tokens_dict, exchange="NSE"):
                         if token_key in tokens_dict:
                             stock_info = tokens_dict[token_key]
                             
+                            # Debug: Log the actual API response fields for first few items
+                            if len(market_data) < 3:
+                                print(f"🔍 API Response Debug for {stock_info['symbol']}:")
+                                print(f"   Available fields: {list(item.keys())}")
+                                print(f"   opnInterest: {item.get('opnInterest', 'NOT_FOUND')}")
+                                print(f"   netChangeOpnInterest: {item.get('netChangeOpnInterest', 'NOT_FOUND')}")
+                                print(f"   oiDayHigh: {item.get('oiDayHigh', 'NOT_FOUND')}")
+                                print(f"   oiDayLow: {item.get('oiDayLow', 'NOT_FOUND')}")
+                                print(f"   chngInOpenInterest: {item.get('chngInOpenInterest', 'NOT_FOUND')}")
+                            
                             # Angel One API provides OI change directly!
-                            # Use the actual 'netChangeOpnInterest' field from the API
-                            net_oi_change = int(item.get('netChangeOpnInterest', 0))
+                            # Try multiple possible field names for OI change
+                            net_oi_change = (
+                                item.get('netChangeOpnInterest', 0) or 
+                                item.get('chngInOpenInterest', 0) or
+                                item.get('changeInOI', 0) or
+                                item.get('netChangeOI', 0) or
+                                0
+                            )
+                            net_oi_change = int(float(net_oi_change))  # Ensure it's an integer
                             current_oi = int(item.get('opnInterest', 0))
                             
                             processed_item = {
