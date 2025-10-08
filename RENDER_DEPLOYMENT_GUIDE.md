@@ -47,14 +47,16 @@ GOOGLE_CREDENTIALS = {"type":"service_account","project_id":"your-project"...}
 ```
 
 **⚠️ Important for Google Sheets:**
-1. **Enable Google Drive API** in addition to Sheets API:
-   - Go to [Google Cloud Console APIs](https://console.developers.google.com/apis/library)
-   - Search "Google Drive API" → Click **Enable**
-   - This is required for the gspread library to work
+1. **Enable TWO APIs** in Google Cloud Console:
+   - **Google Sheets API**: https://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=1016778665061
+   - **Google Drive API**: https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=1016778665061
+   - Both are required for the gspread library to work
 
 2. **First run will show**: `❌ Failed to retrieve historical data` - This is normal!
    - No historical data exists yet on first deployment
    - Data will start accumulating after first refresh
+
+3. **API Usage**: App makes ~6 API calls per refresh (Normal for batched data fetching)
 
 ### 5. Keep-Alive Service (For Historical Data)
 

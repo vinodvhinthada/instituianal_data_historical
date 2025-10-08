@@ -572,21 +572,10 @@ def fetch_market_data(tokens_dict, exchange="NSE"):
                         if token_key in tokens_dict:
                             stock_info = tokens_dict[token_key]
                             
-                            # Calculate Net OI Change for futures (NFO exchange)
-                            net_oi_change = 0
+                            # Angel One API provides OI change directly!
+                            # Use the actual 'netChangeOpnInterest' field from the API
+                            net_oi_change = int(item.get('netChangeOpnInterest', 0))
                             current_oi = int(item.get('opnInterest', 0))
-                            
-                            if exchange == "NFO" and current_oi > 0:
-                                # Get historical OI data for futures
-                                previous_oi = get_historical_oi_data(token_key)
-                                
-                                if previous_oi > 0:
-                                    net_oi_change = current_oi - previous_oi
-                                else:
-                                    # Temporary fallback: Use a small percentage of current OI as mock change
-                                    import random
-                                    percentage_change = random.uniform(-0.05, 0.05)  # Random -5% to +5%
-                                    net_oi_change = int(current_oi * percentage_change)
                             
                             processed_item = {
                                 'token': token_key,
