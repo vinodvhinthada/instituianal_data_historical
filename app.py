@@ -240,9 +240,9 @@ def test_historical_oi():
 
 def get_historical_oi_data(symbol_token):
     """Get historical OI data for a specific token with caching and rate limiting"""
-    # For now, return 0 to speed up the process - we can enable this later
-    # TODO: Re-enable historical OI fetching when needed
-    return 0
+    if not cached_data['auth_token']:
+        if not authenticate():
+            return 0
     
     # Check cache first
     cache_key = f"oi_{symbol_token}"
@@ -253,21 +253,68 @@ def get_historical_oi_data(symbol_token):
         if cache_date == today:
             return cache_data
     
-    if not cached_data['auth_token']:
-        if not authenticate():
-            return 0
-    
     # Rate limiting: wait between API calls
     time.sleep(0.5)  # 500ms delay to avoid rate limits
     
-    # Try just 1 previous trading day for now to reduce API load
-    target_date = get_ist_time().date() - timedelta(days=1)
+    # Get previous trading day data to calculate OI change
+    target_date = get_previous_trading_day()
     
-    # Skip weekends
-    while target_date.weekday() >= 5:  # Skip Saturday(5) and Sunday(6)
-        target_date = target_date - timedelta(days=1)
+    # Use 3-minute interval to get recent data points
+    from_date = target_date.strftime('%Y-%m-%d 15:20')  # Last 10 minutes of previous day
+    to_date = target_date.strftime('%Y-%m-%d 15:30')
     
-    from_date = target_date.strftime('%Y-%m-%d 09:15')
+    url = "https://apiconnect.angelone.in/rest/secure/angelbroking/historical/v1/getOIData"
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-UserType': 'USER',
+        'X-SourceID': 'WEB',
+        'X-ClientLocalIP': '192.168.1.1',
+        'X-ClientPublicIP': '192.168.1.1',
+        'X-MACAddress': '00:00:00:00:00:00',
+        'X-PrivateKey': API_KEY,
+        'Authorization': f'Bearer {cached_data["auth_token"]}'
+    }
+    
+    payload = {
+        "exchange": "NFO",
+        "symboltoken": symbol_token,
+        "interval": "THREE_MINUTE",
+        "fromdate": from_date,
+        "todate": to_date
+    }
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('status') and data.get('data'):
+                oi_data = data['data']
+                if oi_data and len(oi_data) > 0:
+                    # Get the last OI value from previous day
+                    last_oi_entry = oi_data[-1]
+                    previous_oi = int(last_oi_entry.get('oi', 0))
+                    
+                    # Cache the result
+                    cached_data['historical_oi_cache'][cache_key] = (today, previous_oi)
+                    
+                    print(f"📊 Historical OI for {symbol_token}: {previous_oi:,}")
+                    return previous_oi
+                else:
+                    print(f"⚠️ No OI data found for {symbol_token}")
+                    return 0
+            else:
+                print(f"❌ OI API Error for {symbol_token}: {data.get('message', 'Unknown error')}")
+                return 0
+        else:
+            print(f"❌ OI API HTTP Error {response.status_code} for {symbol_token}")
+            return 0
+            
+    except Exception as e:
+        print(f"💥 Error fetching OI data for {symbol_token}: {e}")
+        return 0
     to_date = target_date.strftime('%Y-%m-%d 15:30')
     
     # Official Angel One Historical OI API endpoint
@@ -577,22 +624,29 @@ def fetch_market_data(tokens_dict, exchange="NSE"):
                                 print(f"🔍 API Response Debug for {stock_info['symbol']}:")
                                 print(f"   Available fields: {list(item.keys())}")
                                 print(f"   opnInterest: {item.get('opnInterest', 'NOT_FOUND')}")
-                                print(f"   netChangeOpnInterest: {item.get('netChangeOpnInterest', 'NOT_FOUND')}")
-                                print(f"   oiDayHigh: {item.get('oiDayHigh', 'NOT_FOUND')}")
-                                print(f"   oiDayLow: {item.get('oiDayLow', 'NOT_FOUND')}")
-                                print(f"   chngInOpenInterest: {item.get('chngInOpenInterest', 'NOT_FOUND')}")
                             
-                            # Angel One API provides OI change directly!
-                            # Try multiple possible field names for OI change
-                            net_oi_change = (
-                                item.get('netChangeOpnInterest', 0) or 
-                                item.get('chngInOpenInterest', 0) or
-                                item.get('changeInOI', 0) or
-                                item.get('netChangeOI', 0) or
-                                0
-                            )
-                            net_oi_change = int(float(net_oi_change))  # Ensure it's an integer
+                            # Get current OI from market data
                             current_oi = int(item.get('opnInterest', 0))
+                            
+                            # Calculate OI change for futures using historical API
+                            net_oi_change = 0
+                            if exchange == "NFO" and current_oi > 0:
+                                # Get previous day's OI from historical API
+                                previous_oi = get_historical_oi_data(token_key)
+                                if previous_oi > 0:
+                                    net_oi_change = current_oi - previous_oi
+                                    print(f"📊 OI Change for {stock_info['symbol']}: Current={current_oi:,}, Previous={previous_oi:,}, Change={net_oi_change:,}")
+                                else:
+                                    print(f"⚠️ No historical OI data for {stock_info['symbol']}")
+                            else:
+                                # For NSE stocks, use volume-based proxy
+                                if exchange == "NSE":
+                                    volume = int(item.get('tradeVolume', 0))
+                                    price_change = float(item.get('percentChange', 0.0))
+                                    # Volume intensity proxy for institutional interest
+                                    if volume > 0:
+                                        volume_intensity = volume / 100000  # Normalize
+                                        net_oi_change = int(volume_intensity * (price_change / 10) * 1000)  # Scale appropriately
                             
                             processed_item = {
                                 'token': token_key,
