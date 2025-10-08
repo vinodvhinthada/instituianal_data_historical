@@ -1116,8 +1116,6 @@ def get_chart_data():
             'data_source': 'google_sheets' if historical_data else 'memory',
             'data_points': len(chart_history),
             'last_update': cached_data['last_update'].strftime('%Y-%m-%d %H:%M:%S IST') if cached_data['last_update'] else None
-            },
-            'last_update': cached_data['last_update'].strftime('%Y-%m-%d %H:%M:%S IST') if cached_data['last_update'] else None
         })
     except Exception as e:
         print(f"💥 Error in get_chart_data: {e}")
