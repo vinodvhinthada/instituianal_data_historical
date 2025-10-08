@@ -46,6 +46,16 @@ TOTP_TOKEN = TZZ2VTRBUWPB33SLOSA3NXSGWA
 GOOGLE_CREDENTIALS = {"type":"service_account","project_id":"your-project"...}
 ```
 
+**⚠️ Important for Google Sheets:**
+1. **Enable Google Drive API** in addition to Sheets API:
+   - Go to [Google Cloud Console APIs](https://console.developers.google.com/apis/library)
+   - Search "Google Drive API" → Click **Enable**
+   - This is required for the gspread library to work
+
+2. **First run will show**: `❌ Failed to retrieve historical data` - This is normal!
+   - No historical data exists yet on first deployment
+   - Data will start accumulating after first refresh
+
 ### 5. Keep-Alive Service (For Historical Data)
 
 Since Render free tier sleeps apps, add a keep-alive service to collect historical data:

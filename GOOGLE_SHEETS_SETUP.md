@@ -15,10 +15,11 @@ Your Render app will:
 3. Name: `vinod-market-data`
 4. Select the project from dropdown
 
-### **STEP 2: Enable Google Sheets API**
+### **STEP 2: Enable Required APIs**
 1. Go to **APIs & Services → Library**
-2. Search **"Google Sheets API"**
-3. Click **Enable**
+2. Search **"Google Sheets API"** → Click **Enable**
+3. Search **"Google Drive API"** → Click **Enable** 
+   ⚠️ **This is required for gspread library to work!**
 
 ### **STEP 3: Create Service Account**
 1. Go to **APIs & Services → Credentials**
