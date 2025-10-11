@@ -132,11 +132,11 @@ def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_pr
         
         # Calculate price action scores if not provided
         if nifty_price_action is None or bank_price_action is None:
-            nifty_data = cached_data.get('nifty_data', [])
-            bank_data = cached_data.get('bank_data', [])
+            nifty_futures_data = cached_data.get('nifty_futures', [])
+            bank_futures_data = cached_data.get('bank_futures', [])
             
-            nifty_price_action = calculate_index_price_action(nifty_data, NIFTY_50_WEIGHTS)
-            bank_price_action = calculate_index_price_action(bank_data, BANK_NIFTY_WEIGHTS)
+            nifty_price_action = calculate_index_price_action(nifty_futures_data, NIFTY_50_WEIGHTS)
+            bank_price_action = calculate_index_price_action(bank_futures_data, BANK_NIFTY_WEIGHTS)
         
         # Get price action zones
         nifty_pa_zone = get_price_action_zone(nifty_price_action)['zone']
@@ -1438,12 +1438,12 @@ def get_price_action():
             'nifty_50': {
                 'price_score': nifty_price_score,
                 'zone': nifty_zone,
-                'stocks_analyzed': len([s for s in nifty_data if s.get('symbol', '').upper() in NIFTY_50_WEIGHTS])
+                'stocks_analyzed': len([s for s in nifty_futures_data if s.get('symbol', '').upper() in NIFTY_50_WEIGHTS])
             },
             'bank_nifty': {
                 'price_score': bank_price_score,
                 'zone': bank_zone,
-                'stocks_analyzed': len([s for s in bank_data if s.get('symbol', '').upper() in BANK_NIFTY_WEIGHTS])
+                'stocks_analyzed': len([s for s in bank_futures_data if s.get('symbol', '').upper() in BANK_NIFTY_WEIGHTS])
             },
             'last_update': cached_data['last_update'].strftime('%Y-%m-%d %H:%M:%S IST') if cached_data['last_update'] else None
         })
