@@ -243,6 +243,27 @@
                     </div>
                 </div>
 
+                <!-- Price Action Summary Statement -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-primary text-center mb-0">
+                            <h6 class="mb-2"><i class="fas fa-chart-line"></i> Current Market Position Summary</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div id="niftySummaryStatement" class="fw-bold text-primary">
+                                        📊 NIFTY 50: Calculating...
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="bankSummaryStatement" class="fw-bold text-warning">
+                                        🏦 BANK NIFTY: Calculating...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Price Action Scores -->
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3">
@@ -929,6 +950,13 @@
                         if (bankMeter) {
                             bankMeter.style.height = `${data.bank_nifty.price_score * 100}%`;
                         }
+                        
+                        // Update Price Action Summary Statements
+                        const niftySummary = `📊 NIFTY 50: ${data.nifty_50.price_score.toFixed(3)} - ${data.nifty_50.zone.zone}`;
+                        const bankSummary = `🏦 BANK NIFTY: ${data.bank_nifty.price_score.toFixed(3)} - ${data.bank_nifty.zone.zone}`;
+                        
+                        document.getElementById('niftySummaryStatement').textContent = niftySummary;
+                        document.getElementById('bankSummaryStatement').textContent = bankSummary;
                         
                         // Update status
                         document.getElementById('priceActionStatus').textContent = `Updated: ${data.timestamp} | Stocks: N50=${data.nifty_50.stocks_analyzed}, BN=${data.bank_nifty.stocks_analyzed}`;
