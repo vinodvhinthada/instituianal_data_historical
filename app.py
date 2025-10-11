@@ -54,9 +54,63 @@ except Exception as e:
     GOOGLE_SHEETS_ENABLED = False
     sheets_client = None
 
+# 📊 Index Weights Configuration for Price Action Analysis
+# NIFTY 50 constituent weights (approximate percentages as of 2024)
+NIFTY_50_WEIGHTS = {
+    "RELIANCE": 9.5,      # Reliance Industries
+    "TCS": 7.2,           # Tata Consultancy Services
+    "HDFCBANK": 7.5,      # HDFC Bank
+    "ICICIBANK": 7.0,     # ICICI Bank
+    "HINDUNILVR": 4.8,    # Hindustan Unilever
+    "INFY": 4.5,          # Infosys
+    "LT": 3.8,            # Larsen & Toubro
+    "ITC": 3.5,           # ITC Limited
+    "SBIN": 3.2,          # State Bank of India
+    "BHARTIARTL": 3.0,    # Bharti Airtel
+    "KOTAKBANK": 2.8,     # Kotak Mahindra Bank
+    "ASIANPAINT": 2.5,    # Asian Paints
+    "MARUTI": 2.4,        # Maruti Suzuki
+    "AXISBANK": 2.3,      # Axis Bank
+    "HCLTECH": 2.2,       # HCL Technologies
+    "BAJFINANCE": 2.1,    # Bajaj Finance
+    "WIPRO": 1.9,         # Wipro
+    "NESTLEIND": 1.8,     # Nestle India
+    "ULTRACEMCO": 1.7,    # UltraTech Cement
+    "TATAMOTORS": 1.6,    # Tata Motors
+    "SUNPHARMA": 1.5,     # Sun Pharmaceutical
+    "NTPC": 1.4,          # NTPC
+    "TITAN": 1.3,         # Titan Company
+    "POWERGRID": 1.2,     # Power Grid Corporation
+    "TECHM": 1.1,         # Tech Mahindra
+    "M&M": 1.0,           # Mahindra & Mahindra
+    "ADANIPORTS": 0.9,    # Adani Ports
+    "ONGC": 0.8,          # Oil & Natural Gas Corporation
+    "COALINDIA": 0.7,     # Coal India
+    "TATASTEEL": 0.6,     # Tata Steel
+    "BAJAJFINSV": 0.5,    # Bajaj Finserv
+    "DRREDDY": 0.4,       # Dr. Reddy's Laboratories
+    "HINDALCO": 0.3,      # Hindalco Industries
+    "EICHERMOT": 0.2,     # Eicher Motors
+    "DIVISLAB": 0.1,      # Divi's Laboratories
+}
+
+# Bank NIFTY constituent weights (approximate percentages as of 2024)
+BANK_NIFTY_WEIGHTS = {
+    "HDFCBANK": 23.5,     # HDFC Bank
+    "ICICIBANK": 22.8,    # ICICI Bank
+    "SBIN": 15.2,         # State Bank of India
+    "KOTAKBANK": 12.4,    # Kotak Mahindra Bank
+    "AXISBANK": 11.8,     # Axis Bank
+    "INDUSINDBK": 4.2,    # IndusInd Bank
+    "FEDERALBNK": 3.1,    # Federal Bank
+    "BANDHANBNK": 2.8,    # Bandhan Bank
+    "AUBANK": 2.2,        # AU Small Finance Bank
+    "IDFCFIRSTB": 2.0,    # IDFC First Bank
+}
+
 # 📊 Google Sheets Helper Functions
-def append_historical_data(nifty_iss, bank_iss):
-    """Append current ISS data to Google Sheets for historical tracking"""
+def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_price_action=None):
+    """Append current ISS and Price Action data to Google Sheets for historical tracking"""
     if not GOOGLE_SHEETS_ENABLED or not sheets_client:
         return False
         
@@ -67,12 +121,26 @@ def append_historical_data(nifty_iss, bank_iss):
         except gspread.SpreadsheetNotFound:
             # Create new spreadsheet if it doesn't exist
             sheet = sheets_client.create(SPREADSHEET_NAME).sheet1
-            # Add headers
+            # Add headers with price action columns
             sheet.append_row([
                 'Timestamp', 'IST_Time', 'Nifty_ISS', 'Bank_ISS', 
-                'Nifty_Status', 'Bank_Status', 'Session'
+                'Nifty_Status', 'Bank_Status', 'Session',
+                'Nifty_Price_Action', 'Bank_Price_Action',
+                'Nifty_PA_Zone', 'Bank_PA_Zone'
             ])
             print(f"✅ Created new Google Sheet: {SPREADSHEET_NAME}")
+        
+        # Calculate price action scores if not provided
+        if nifty_price_action is None or bank_price_action is None:
+            nifty_data = cached_data.get('nifty_data', [])
+            bank_data = cached_data.get('bank_data', [])
+            
+            nifty_price_action = calculate_index_price_action(nifty_data, NIFTY_50_WEIGHTS)
+            bank_price_action = calculate_index_price_action(bank_data, BANK_NIFTY_WEIGHTS)
+        
+        # Get price action zones
+        nifty_pa_zone = get_price_action_zone(nifty_price_action)['zone']
+        bank_pa_zone = get_price_action_zone(bank_price_action)['zone']
         
         # Prepare data
         current_time = get_ist_time()
@@ -94,10 +162,12 @@ def append_historical_data(nifty_iss, bank_iss):
         nifty_status = get_meter_status(nifty_iss)['status']
         bank_status = get_meter_status(bank_iss)['status']
         
-        # Append row
+        # Append row with price action data
         sheet.append_row([
             timestamp, ist_time, round(nifty_iss, 4), round(bank_iss, 4),
-            nifty_status, bank_status, session
+            nifty_status, bank_status, session,
+            round(nifty_price_action, 4), round(bank_price_action, 4),
+            nifty_pa_zone, bank_pa_zone
         ])
         
         print(f"📊 Historical data saved: {timestamp} | Nifty: {nifty_iss:.3f} | Bank: {bank_iss:.3f}")
@@ -727,6 +797,103 @@ def fetch_pcr_data():
         print(f"❌ Error fetching PCR data: {e}")
         return {}
 
+def calculate_price_strength(ltp, high, low):
+    """
+    Calculate individual stock price strength using intraday range position
+    Formula: (LTP - Low) / (High - Low)
+    Returns value between 0 and 1
+    """
+    try:
+        if high == low:  # Avoid division by zero
+            return 0.5  # Neutral if no range
+        
+        price_strength = (ltp - low) / (high - low)
+        return max(0, min(1, price_strength))  # Clamp between 0 and 1
+    except:
+        return 0.5  # Default to neutral on error
+
+def calculate_index_price_action(stocks_data, index_weights):
+    """
+    Calculate weighted index-level price action score
+    Args:
+        stocks_data: List of stock dictionaries with 'symbol', 'ltp', 'high', 'low'
+        index_weights: Dictionary mapping stock symbols to weights
+    Returns:
+        Weighted price action score between 0 and 1
+    """
+    try:
+        total_weighted_strength = 0
+        total_weights = 0
+        
+        for stock in stocks_data:
+            symbol = stock.get('symbol', '').upper()
+            ltp = float(stock.get('ltp', 0))
+            high = float(stock.get('high', 0))
+            low = float(stock.get('low', 0))
+            
+            # Get weight for this stock
+            weight = index_weights.get(symbol, 0)
+            if weight > 0 and high > 0 and low > 0:
+                price_strength = calculate_price_strength(ltp, high, low)
+                total_weighted_strength += weight * price_strength
+                total_weights += weight
+        
+        if total_weights == 0:
+            return 0.5  # Neutral if no valid data
+        
+        # Calculate weighted average
+        index_score = total_weighted_strength / total_weights
+        return round(index_score, 3)
+    
+    except Exception as e:
+        print(f"❌ Error calculating index price action: {e}")
+        return 0.5
+
+def get_price_action_zone(score):
+    """
+    Classify price action score into zones with trading interpretation
+    """
+    if score <= 0.2:
+        return {
+            'zone': 'Deep Bear',
+            'description': 'Strong sell-off; price hugging day\'s lows',
+            'action': 'Avoid longs; watch for reversal setups',
+            'color': 'danger',
+            'icon': '🔴'
+        }
+    elif score <= 0.4:
+        return {
+            'zone': 'Weak',
+            'description': 'Sellers still active; mild relief possible',
+            'action': 'Only scalp; trend still down',
+            'color': 'warning',
+            'icon': '🟡'
+        }
+    elif score <= 0.6:
+        return {
+            'zone': 'Neutral',
+            'description': 'Tug-of-war; could break any side',
+            'action': 'Wait for breakout or confirm with OI',
+            'color': 'secondary',
+            'icon': '⚪'
+        }
+    elif score <= 0.8:
+        return {
+            'zone': 'Bullish',
+            'description': 'Buyers in control; pullbacks get bought',
+            'action': 'Prefer long trades with OI support',
+            'color': 'success',
+            'icon': '🟢'
+        }
+    else:
+        return {
+            'zone': 'Strong Bull',
+            'description': 'Index at/near highs',
+            'action': 'Trail profits; beware of exhaustion',
+            'color': 'info',
+            'icon': '🔵'
+        }
+
 def calculate_meter_value(market_data):
     """
     Calculate institutional-level weighted sentiment meter based on:
@@ -1043,8 +1210,12 @@ def refresh_data():
         nifty_iss = calculate_meter_value(cached_data['nifty_futures']) if cached_data['nifty_futures'] else 0
         bank_iss = calculate_meter_value(cached_data['bank_futures']) if cached_data['bank_futures'] else 0
         
-        # Save to Google Sheets for historical data
-        append_historical_data(nifty_iss, bank_iss)
+        # Calculate price action scores
+        nifty_price_action = calculate_index_price_action(cached_data['nifty_50'], NIFTY_50_WEIGHTS)
+        bank_price_action = calculate_index_price_action(cached_data['bank_nifty'], BANK_NIFTY_WEIGHTS)
+        
+        # Save to Google Sheets for historical data (including price action)
+        append_historical_data(nifty_iss, bank_iss, nifty_price_action, bank_price_action)
         
         print("✅ Data refresh completed successfully!")
         
@@ -1182,6 +1353,115 @@ def get_chart_data():
         return jsonify({
             'status': 'error',
             'message': f'Error getting chart data: {str(e)}'
+        }), 500
+
+@app.route('/api/price-action')
+def get_price_action():
+    """Get real-time price action analysis for NIFTY 50 and Bank NIFTY"""
+    try:
+        # Get current stock data
+        nifty_data = cached_data.get('nifty_50', [])
+        bank_data = cached_data.get('bank_nifty', [])
+        
+        # Calculate price action scores
+        nifty_price_score = calculate_index_price_action(nifty_data, NIFTY_50_WEIGHTS)
+        bank_price_score = calculate_index_price_action(bank_data, BANK_NIFTY_WEIGHTS)
+        
+        # Get zone classifications
+        nifty_zone = get_price_action_zone(nifty_price_score)
+        bank_zone = get_price_action_zone(bank_price_score)
+        
+        # Get current timestamp
+        current_time = get_ist_time()
+        timestamp = current_time.strftime('%H:%M')
+        
+        return jsonify({
+            'status': 'success',
+            'timestamp': timestamp,
+            'nifty_50': {
+                'price_score': nifty_price_score,
+                'zone': nifty_zone,
+                'stocks_analyzed': len([s for s in nifty_data if s.get('symbol', '').upper() in NIFTY_50_WEIGHTS])
+            },
+            'bank_nifty': {
+                'price_score': bank_price_score,
+                'zone': bank_zone,
+                'stocks_analyzed': len([s for s in bank_data if s.get('symbol', '').upper() in BANK_NIFTY_WEIGHTS])
+            },
+            'last_update': cached_data['last_update'].strftime('%Y-%m-%d %H:%M:%S IST') if cached_data['last_update'] else None
+        })
+        
+    except Exception as e:
+        print(f"💥 Error in get_price_action: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Error getting price action data: {str(e)}'
+        }), 500
+
+@app.route('/api/price-action-history')
+def get_price_action_history():
+    """Get historical price action chart data from Google Sheets"""
+    try:
+        # Get historical data from Google Sheets
+        historical_data = get_historical_data(hours_back=24)
+        
+        if historical_data:
+            # Extract price action data for charts
+            price_history = []
+            for point in historical_data:
+                try:
+                    chart_point = {
+                        'timestamp': point['timestamp'],
+                        'time_full': point['time_full'],
+                        'nifty_price_action': float(point.get('nifty_price_action', 0.5)),
+                        'bank_price_action': float(point.get('bank_price_action', 0.5)),
+                        'nifty_pa_zone': point.get('nifty_pa_zone', 'Neutral'),
+                        'bank_pa_zone': point.get('bank_pa_zone', 'Neutral')
+                    }
+                    price_history.append(chart_point)
+                except (KeyError, ValueError, TypeError) as e:
+                    print(f"⚠️ Skipping invalid price action data point: {e}")
+                    continue
+                    
+            return jsonify({
+                'status': 'success',
+                'price_action_history': price_history,
+                'data_source': 'google_sheets',
+                'data_points': len(price_history),
+                'last_update': cached_data['last_update'].strftime('%Y-%m-%d %H:%M:%S IST') if cached_data['last_update'] else None
+            })
+        else:
+            # Fallback to current data only
+            nifty_data = cached_data.get('nifty_50', [])
+            bank_data = cached_data.get('bank_nifty', [])
+            
+            current_nifty_pa = calculate_index_price_action(nifty_data, NIFTY_50_WEIGHTS)
+            current_bank_pa = calculate_index_price_action(bank_data, BANK_NIFTY_WEIGHTS)
+            
+            current_time = get_ist_time()
+            
+            fallback_data = [{
+                'timestamp': current_time.strftime('%H:%M'),
+                'time_full': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'nifty_price_action': current_nifty_pa,
+                'bank_price_action': current_bank_pa,
+                'nifty_pa_zone': get_price_action_zone(current_nifty_pa)['zone'],
+                'bank_pa_zone': get_price_action_zone(current_bank_pa)['zone']
+            }]
+            
+            return jsonify({
+                'status': 'success',
+                'price_action_history': fallback_data,
+                'data_source': 'current_only',
+                'data_points': 1,
+                'last_update': cached_data['last_update'].strftime('%Y-%m-%d %H:%M:%S IST') if cached_data['last_update'] else None
+            })
+            
+    except Exception as e:
+        print(f"💥 Error in get_price_action_history: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Error getting price action history: {str(e)}'
         }), 500
 
 @app.route('/api/debug')

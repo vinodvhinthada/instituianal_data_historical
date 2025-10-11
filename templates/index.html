@@ -56,6 +56,35 @@
         .metric-label { font-weight: 500; }
         .metric-value { font-weight: bold; }
         .badge-impact { font-size: 0.75rem; }
+        
+        /* Price Action Meter Styles */
+        .price-meter {
+            width: 60px;
+            height: 120px;
+            background: #e9ecef;
+            border-radius: 30px;
+            position: relative;
+            margin: 0 auto;
+            border: 2px solid #dee2e6;
+        }
+        .meter-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 0 0 26px 26px;
+            transition: height 0.5s ease-in-out;
+        }
+        .price-meter::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -10px;
+            right: -10px;
+            height: 2px;
+            background: #6c757d;
+            z-index: 1;
+        }
     </style>
 </head>
 <body>
@@ -102,6 +131,11 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="charts-tab" data-bs-toggle="pill" data-bs-target="#charts" type="button">
                     📈 FUTURES CHARTS & IMPACT
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="price-action-tab" data-bs-toggle="pill" data-bs-target="#price-action" type="button">
+                    🎯 PRICE ACTION ANALYSIS
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -193,7 +227,126 @@
                     </div>
                 </div>
             </div>
-            
+
+            <!-- Price Action Analysis Tab -->
+            <div class="tab-pane fade" id="price-action" role="tabpanel">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h3 class="text-center mb-4">
+                            <i class="fas fa-bullseye text-warning"></i>
+                            Price Action Analysis - Intraday Range Position
+                        </h3>
+                        <div class="text-center">
+                            <span class="badge bg-info" id="priceActionStatus">Loading...</span>
+                            <button onclick="updatePriceAction()" class="btn btn-sm btn-light ms-2">🔄 Refresh Analysis</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Action Scores -->
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-line"></i> NIFTY 50 Price Action
+                                    <span id="niftyPriceZone" class="badge ms-2">Calculating...</span>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-8">
+                                        <h2 class="text-primary mb-0" id="niftyPriceScore">0.000</h2>
+                                        <small class="text-muted">Price Strength Score (0-1)</small>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <div class="price-meter" id="niftyPriceMeter">
+                                            <div class="meter-fill bg-primary" style="height: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <div id="niftyPriceDescription" class="text-muted mb-2">Analyzing market position...</div>
+                                    <div id="niftyPriceAction" class="small fw-bold">Calculating trading action...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-university"></i> BANK NIFTY Price Action
+                                    <span id="bankPriceZone" class="badge ms-2">Calculating...</span>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-8">
+                                        <h2 class="text-warning mb-0" id="bankPriceScore">0.000</h2>
+                                        <small class="text-muted">Price Strength Score (0-1)</small>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <div class="price-meter" id="bankPriceMeter">
+                                            <div class="meter-fill bg-warning" style="height: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <div id="bankPriceDescription" class="text-muted mb-2">Analyzing market position...</div>
+                                    <div id="bankPriceAction" class="small fw-bold">Calculating trading action...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Action Zone Legend -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-graduation-cap"></i> Price Action Methodology - Intraday Range Position:</h6>
+                            <div class="row mb-2">
+                                <div class="col-md-2"><span class="badge bg-danger">🔴</span> <strong>Deep Bear (0.0-0.2):</strong> Near day's lows</div>
+                                <div class="col-md-2"><span class="badge bg-warning">🟡</span> <strong>Weak (0.2-0.4):</strong> Sellers active</div>
+                                <div class="col-md-2"><span class="badge bg-secondary">⚪</span> <strong>Neutral (0.4-0.6):</strong> Range-bound</div>
+                                <div class="col-md-3"><span class="badge bg-success">🟢</span> <strong>Bullish (0.6-0.8):</strong> Buyers in control</div>
+                                <div class="col-md-3"><span class="badge bg-info">🔵</span> <strong>Strong Bull (0.8-1.0):</strong> Near day's highs</div>
+                            </div>
+                            <p class="mb-0">
+                                <strong>Formula:</strong> Price Strength = (LTP - Low) / (High - Low) | 
+                                <strong>Weighting:</strong> Based on index constituent weights
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historical Price Action Charts -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">NIFTY 50 Price Action Trend</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="niftyPriceActionChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Bank NIFTY Price Action Trend</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="bankPriceActionChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Nifty 50 Tab -->
             <div class="tab-pane fade" id="nifty50" role="tabpanel">
                 <div class="row">
@@ -660,6 +813,178 @@
                 });
         }
 
+        // Price Action Analysis Functions
+        let niftyPriceChart, bankPriceChart;
+        
+        function createPriceActionCharts() {
+            console.log('🎯 Creating price action charts...');
+            
+            // Create NIFTY Price Action Chart
+            const niftyPriceCtx = document.getElementById('niftyPriceActionChart').getContext('2d');
+            niftyPriceChart = new Chart(niftyPriceCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'NIFTY 50 Price Strength',
+                        data: [],
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1.0,
+                            min: 0.0,
+                            title: { display: true, text: 'Price Strength (0-1)' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Time (IST)' }
+                        }
+                    }
+                }
+            });
+
+            // Create Bank Price Action Chart
+            const bankPriceCtx = document.getElementById('bankPriceActionChart').getContext('2d');
+            bankPriceChart = new Chart(bankPriceCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Bank NIFTY Price Strength',
+                        data: [],
+                        borderColor: '#ffc107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1.0,
+                            min: 0.0,
+                            title: { display: true, text: 'Price Strength (0-1)' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Time (IST)' }
+                        }
+                    }
+                }
+            });
+            
+            console.log('✅ Price action charts created');
+        }
+        
+        function updatePriceAction() {
+            console.log('🎯 Updating price action analysis...');
+            
+            // Update current price action data
+            fetch('/api/price-action')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('🎯 Price action data received:', data);
+                    
+                    if (data.status === 'success') {
+                        // Update NIFTY 50 price action
+                        document.getElementById('niftyPriceScore').textContent = data.nifty_50.price_score.toFixed(3);
+                        document.getElementById('niftyPriceZone').textContent = data.nifty_50.zone.zone;
+                        document.getElementById('niftyPriceZone').className = `badge ms-2 bg-${data.nifty_50.zone.color}`;
+                        document.getElementById('niftyPriceDescription').textContent = data.nifty_50.zone.description;
+                        document.getElementById('niftyPriceAction').textContent = data.nifty_50.zone.action;
+                        
+                        // Update NIFTY meter
+                        const niftyMeter = document.querySelector('#niftyPriceMeter .meter-fill');
+                        if (niftyMeter) {
+                            niftyMeter.style.height = `${data.nifty_50.price_score * 100}%`;
+                        }
+                        
+                        // Update Bank NIFTY price action
+                        document.getElementById('bankPriceScore').textContent = data.bank_nifty.price_score.toFixed(3);
+                        document.getElementById('bankPriceZone').textContent = data.bank_nifty.zone.zone;
+                        document.getElementById('bankPriceZone').className = `badge ms-2 bg-${data.bank_nifty.zone.color}`;
+                        document.getElementById('bankPriceDescription').textContent = data.bank_nifty.zone.description;
+                        document.getElementById('bankPriceAction').textContent = data.bank_nifty.zone.action;
+                        
+                        // Update Bank meter
+                        const bankMeter = document.querySelector('#bankPriceMeter .meter-fill');
+                        if (bankMeter) {
+                            bankMeter.style.height = `${data.bank_nifty.price_score * 100}%`;
+                        }
+                        
+                        // Update status
+                        document.getElementById('priceActionStatus').textContent = `Updated: ${data.timestamp} | Stocks: N50=${data.nifty_50.stocks_analyzed}, BN=${data.bank_nifty.stocks_analyzed}`;
+                        
+                        console.log('✅ Price action updated successfully');
+                    } else {
+                        console.error('❌ Price action API error:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('💥 Error updating price action:', error);
+                });
+            
+            // Update historical price action charts
+            fetch('/api/price-action-history')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📊 Price action history received:', data);
+                    
+                    if (data.status === 'success' && data.price_action_history) {
+                        const history = data.price_action_history;
+                        
+                        // Extract data for charts
+                        const timestamps = history.map(point => point.timestamp);
+                        const niftyPriceValues = history.map(point => parseFloat(point.nifty_price_action));
+                        const bankPriceValues = history.map(point => parseFloat(point.bank_price_action));
+                        
+                        console.log('📊 Price action chart data:', {
+                            timestamps: timestamps.slice(0, 3),
+                            niftyValues: niftyPriceValues.slice(0, 3),
+                            bankValues: bankPriceValues.slice(0, 3),
+                            totalPoints: history.length
+                        });
+                        
+                        // Update NIFTY price action chart
+                        if (niftyPriceChart && niftyPriceChart.data) {
+                            niftyPriceChart.data.labels = timestamps;
+                            niftyPriceChart.data.datasets[0].data = niftyPriceValues;
+                            niftyPriceChart.update('none');
+                            console.log('✅ NIFTY price action chart updated');
+                        }
+                        
+                        // Update Bank price action chart
+                        if (bankPriceChart && bankPriceChart.data) {
+                            bankPriceChart.data.labels = timestamps;
+                            bankPriceChart.data.datasets[0].data = bankPriceValues;
+                            bankPriceChart.update('none');
+                            console.log('✅ Bank price action chart updated');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('💥 Error updating price action charts:', error);
+                });
+        }
+
         // FIXED: Load data and create DataTable in correct order
         function loadTabData(dataType, tableId, summaryId) {
             console.log(`Loading ${dataType} into ${tableId}`);
@@ -804,6 +1129,7 @@
                         setTimeout(() => {
                             updateMeters();
                             updateCharts();  // Update charts with new data
+                            updatePriceAction();  // Update price action analysis
                         }, 1000);
                         
                         dataLoaded = true;
@@ -828,6 +1154,12 @@
             
             // Initialize charts
             createCharts();
+            createPriceActionCharts();
+            
+            // Initial price action update
+            setTimeout(() => {
+                updatePriceAction();
+            }, 2000);
             
             // Refresh button
             document.getElementById('refreshBtn').addEventListener('click', refreshData);
