@@ -822,6 +822,11 @@ def calculate_index_price_action(stocks_data, index_weights):
         Weighted price action score between 0 and 1
     """
     try:
+        # Handle None or empty data
+        if not stocks_data or stocks_data is None:
+            print("⚠️ No stocks data provided for price action calculation")
+            return 0.5  # Return neutral score
+            
         total_weighted_strength = 0
         total_weights = 0
         
@@ -1211,8 +1216,13 @@ def refresh_data():
         bank_iss = calculate_meter_value(cached_data['bank_futures']) if cached_data['bank_futures'] else 0
         
         # Calculate price action scores
-        nifty_price_action = calculate_index_price_action(cached_data['nifty_50'], NIFTY_50_WEIGHTS)
-        bank_price_action = calculate_index_price_action(cached_data['bank_nifty'], BANK_NIFTY_WEIGHTS)
+        nifty_50_data = cached_data.get('nifty_50', []) or []
+        bank_nifty_data = cached_data.get('bank_nifty', []) or []
+        
+        nifty_price_action = calculate_index_price_action(nifty_50_data, NIFTY_50_WEIGHTS)
+        bank_price_action = calculate_index_price_action(bank_nifty_data, BANK_NIFTY_WEIGHTS)
+        
+        print(f"📊 Calculated price actions: NIFTY={nifty_price_action}, Bank={bank_price_action}")
         
         # Save to Google Sheets for historical data (including price action)
         append_historical_data(nifty_iss, bank_iss, nifty_price_action, bank_price_action)
@@ -1359,13 +1369,24 @@ def get_chart_data():
 def get_price_action():
     """Get real-time price action analysis for NIFTY 50 and Bank NIFTY"""
     try:
-        # Get current stock data
+        # Get current stock data with proper fallbacks
         nifty_data = cached_data.get('nifty_50', [])
         bank_data = cached_data.get('bank_nifty', [])
+        
+        print(f"🔍 Price action data check: nifty_50={len(nifty_data) if nifty_data else 0}, bank_nifty={len(bank_data) if bank_data else 0}")
+        print(f"🗃️ Available cached_data keys: {list(cached_data.keys())}")
+        
+        # Ensure we have lists, not None
+        if nifty_data is None:
+            nifty_data = []
+        if bank_data is None:
+            bank_data = []
         
         # Calculate price action scores
         nifty_price_score = calculate_index_price_action(nifty_data, NIFTY_50_WEIGHTS)
         bank_price_score = calculate_index_price_action(bank_data, BANK_NIFTY_WEIGHTS)
+        
+        print(f"📊 Price action scores: NIFTY={nifty_price_score}, Bank={bank_price_score}")
         
         # Get zone classifications
         nifty_zone = get_price_action_zone(nifty_price_score)
@@ -1435,6 +1456,14 @@ def get_price_action_history():
             nifty_data = cached_data.get('nifty_50', [])
             bank_data = cached_data.get('bank_nifty', [])
             
+            # Ensure we have lists, not None
+            if nifty_data is None:
+                nifty_data = []
+            if bank_data is None:
+                bank_data = []
+            
+            print(f"🔄 Fallback mode: nifty_50={len(nifty_data)}, bank_nifty={len(bank_data)}")
+            
             current_nifty_pa = calculate_index_price_action(nifty_data, NIFTY_50_WEIGHTS)
             current_bank_pa = calculate_index_price_action(bank_data, BANK_NIFTY_WEIGHTS)
             
@@ -1462,6 +1491,37 @@ def get_price_action_history():
         return jsonify({
             'status': 'error',
             'message': f'Error getting price action history: {str(e)}'
+        }), 500
+
+@app.route('/api/debug-cache')
+def debug_cache():
+    """Debug endpoint to check cached data structure"""
+    try:
+        cache_info = {
+            'keys': list(cached_data.keys()),
+            'data_counts': {},
+            'sample_data': {}
+        }
+        
+        for key, value in cached_data.items():
+            if isinstance(value, list):
+                cache_info['data_counts'][key] = len(value)
+                if len(value) > 0:
+                    cache_info['sample_data'][key] = {
+                        'first_item_keys': list(value[0].keys()) if isinstance(value[0], dict) else 'not_dict',
+                        'sample_symbols': [item.get('symbol', 'no_symbol') for item in value[:3]] if isinstance(value[0], dict) else []
+                    }
+            else:
+                cache_info['data_counts'][key] = f"type: {type(value).__name__}"
+                
+        return jsonify({
+            'status': 'success',
+            'cache_info': cache_info
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Debug error: {str(e)}'
         }), 500
 
 @app.route('/api/debug')
