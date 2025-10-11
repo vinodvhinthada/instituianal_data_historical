@@ -829,25 +829,52 @@ def calculate_index_price_action(stocks_data, index_weights):
             
         total_weighted_strength = 0
         total_weights = 0
+        matched_stocks = 0
+        processed_stocks = []
         
         for stock in stocks_data:
             symbol = stock.get('symbol', '').upper()
+            # Clean symbol name - remove suffixes like "28OCT25FUT"
+            clean_symbol = symbol.replace('28OCT25FUT', '').replace('-EQ', '')
+            
+            # Handle special Bank NIFTY symbol mappings
+            if clean_symbol == 'BANKNIFTY':
+                continue  # Skip index symbol itself
+                
             ltp = float(stock.get('ltp', 0))
             high = float(stock.get('high', 0))
             low = float(stock.get('low', 0))
             
-            # Get weight for this stock
-            weight = index_weights.get(symbol, 0)
-            if weight > 0 and high > 0 and low > 0:
+            # Get weight for this stock using clean symbol
+            weight = index_weights.get(clean_symbol, 0)
+            if weight > 0 and high > 0 and low > 0 and ltp > 0:
                 price_strength = calculate_price_strength(ltp, high, low)
                 total_weighted_strength += weight * price_strength
                 total_weights += weight
+                matched_stocks += 1
+                processed_stocks.append({
+                    'symbol': clean_symbol,
+                    'ltp': ltp,
+                    'high': high,
+                    'low': low,
+                    'strength': price_strength,
+                    'weight': weight
+                })
+        
+        print(f"📊 Price Action Processing: {matched_stocks} stocks matched, total weight: {total_weights:.2f}")
+        if len(processed_stocks) > 0:
+            # Show top 3 processed stocks
+            top_stocks = sorted(processed_stocks, key=lambda x: x['weight'], reverse=True)[:3]
+            for stock in top_stocks:
+                print(f"   📈 {stock['symbol']}: LTP={stock['ltp']}, H={stock['high']}, L={stock['low']}, Strength={stock['strength']:.3f}, Weight={stock['weight']}%")
         
         if total_weights == 0:
+            print("⚠️ No valid stocks matched for price action calculation")
             return 0.5  # Neutral if no valid data
         
         # Calculate weighted average
         index_score = total_weighted_strength / total_weights
+        print(f"🎯 Final Price Action Score: {index_score:.3f} (from {matched_stocks} stocks)")
         return round(index_score, 3)
     
     except Exception as e:
@@ -1215,12 +1242,12 @@ def refresh_data():
         nifty_iss = calculate_meter_value(cached_data['nifty_futures']) if cached_data['nifty_futures'] else 0
         bank_iss = calculate_meter_value(cached_data['bank_futures']) if cached_data['bank_futures'] else 0
         
-        # Calculate price action scores
-        nifty_50_data = cached_data.get('nifty_50', []) or []
-        bank_nifty_data = cached_data.get('bank_nifty', []) or []
+        # Calculate price action scores using FUTURES data (has LTP, High, Low)
+        nifty_futures_data = cached_data.get('nifty_futures', []) or []
+        bank_futures_data = cached_data.get('bank_futures', []) or []
         
-        nifty_price_action = calculate_index_price_action(nifty_50_data, NIFTY_50_WEIGHTS)
-        bank_price_action = calculate_index_price_action(bank_nifty_data, BANK_NIFTY_WEIGHTS)
+        nifty_price_action = calculate_index_price_action(nifty_futures_data, NIFTY_50_WEIGHTS)
+        bank_price_action = calculate_index_price_action(bank_futures_data, BANK_NIFTY_WEIGHTS)
         
         print(f"📊 Calculated price actions: NIFTY={nifty_price_action}, Bank={bank_price_action}")
         
@@ -1369,22 +1396,31 @@ def get_chart_data():
 def get_price_action():
     """Get real-time price action analysis for NIFTY 50 and Bank NIFTY"""
     try:
-        # Get current stock data with proper fallbacks
-        nifty_data = cached_data.get('nifty_50', [])
-        bank_data = cached_data.get('bank_nifty', [])
+        # Get FUTURES data for price action (this has LTP, High, Low, Open)
+        nifty_futures_data = cached_data.get('nifty_futures', [])
+        bank_futures_data = cached_data.get('bank_futures', [])
         
-        print(f"🔍 Price action data check: nifty_50={len(nifty_data) if nifty_data else 0}, bank_nifty={len(bank_data) if bank_data else 0}")
+        print(f"🔍 Price action data check: nifty_futures={len(nifty_futures_data) if nifty_futures_data else 0}, bank_futures={len(bank_futures_data) if bank_futures_data else 0}")
         print(f"🗃️ Available cached_data keys: {list(cached_data.keys())}")
         
         # Ensure we have lists, not None
-        if nifty_data is None:
-            nifty_data = []
-        if bank_data is None:
-            bank_data = []
+        if nifty_futures_data is None:
+            nifty_futures_data = []
+        if bank_futures_data is None:
+            bank_futures_data = []
         
-        # Calculate price action scores
-        nifty_price_score = calculate_index_price_action(nifty_data, NIFTY_50_WEIGHTS)
-        bank_price_score = calculate_index_price_action(bank_data, BANK_NIFTY_WEIGHTS)
+        # Debug: Show sample futures data
+        if len(nifty_futures_data) > 0:
+            sample = nifty_futures_data[0]
+            print(f"📊 Sample NIFTY futures data: symbol={sample.get('symbol')}, ltp={sample.get('ltp')}, high={sample.get('high')}, low={sample.get('low')}")
+        
+        if len(bank_futures_data) > 0:
+            sample = bank_futures_data[0]
+            print(f"🏦 Sample Bank futures data: symbol={sample.get('symbol')}, ltp={sample.get('ltp')}, high={sample.get('high')}, low={sample.get('low')}")
+        
+        # Calculate price action scores using futures data
+        nifty_price_score = calculate_index_price_action(nifty_futures_data, NIFTY_50_WEIGHTS)
+        bank_price_score = calculate_index_price_action(bank_futures_data, BANK_NIFTY_WEIGHTS)
         
         print(f"📊 Price action scores: NIFTY={nifty_price_score}, Bank={bank_price_score}")
         
@@ -1452,20 +1488,20 @@ def get_price_action_history():
                 'last_update': cached_data['last_update'].strftime('%Y-%m-%d %H:%M:%S IST') if cached_data['last_update'] else None
             })
         else:
-            # Fallback to current data only
-            nifty_data = cached_data.get('nifty_50', [])
-            bank_data = cached_data.get('bank_nifty', [])
+            # Fallback to current data only using FUTURES data
+            nifty_futures_data = cached_data.get('nifty_futures', [])
+            bank_futures_data = cached_data.get('bank_futures', [])
             
             # Ensure we have lists, not None
-            if nifty_data is None:
-                nifty_data = []
-            if bank_data is None:
-                bank_data = []
+            if nifty_futures_data is None:
+                nifty_futures_data = []
+            if bank_futures_data is None:
+                bank_futures_data = []
             
-            print(f"🔄 Fallback mode: nifty_50={len(nifty_data)}, bank_nifty={len(bank_data)}")
+            print(f"🔄 Fallback mode: nifty_futures={len(nifty_futures_data)}, bank_futures={len(bank_futures_data)}")
             
-            current_nifty_pa = calculate_index_price_action(nifty_data, NIFTY_50_WEIGHTS)
-            current_bank_pa = calculate_index_price_action(bank_data, BANK_NIFTY_WEIGHTS)
+            current_nifty_pa = calculate_index_price_action(nifty_futures_data, NIFTY_50_WEIGHTS)
+            current_bank_pa = calculate_index_price_action(bank_futures_data, BANK_NIFTY_WEIGHTS)
             
             current_time = get_ist_time()
             
