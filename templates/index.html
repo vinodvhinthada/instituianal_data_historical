@@ -149,6 +149,7 @@
                                     <span id="niftyImpactBadge" class="badge ms-2">Loading...</span>
                                     <small id="dataSource" class="float-end">📊 Historical Data</small>
                                 </h5>
+                                <button onclick="updateCharts()" class="btn btn-sm btn-light mt-1">🔄 Refresh Charts</button>
                             </div>
                             <div class="card-body">
                                 <canvas id="niftyFuturesChart" width="400" height="200"></canvas>
@@ -444,6 +445,8 @@
 
         // Chart creation and update functions
         function createCharts() {
+            console.log('🎨 Creating charts...');
+            
             // Create NIFTY 50 FUTURES Chart
             const niftyCtx = document.getElementById('niftyFuturesChart').getContext('2d');
             niftyChart = new Chart(niftyCtx, {
@@ -451,7 +454,7 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'NIFTY 50 Futures Meter Value',
+                        label: 'NIFTY 50 Futures ISS Score',
                         data: [],
                         borderColor: '#0d6efd',
                         backgroundColor: 'rgba(13, 110, 253, 0.1)',
@@ -465,19 +468,29 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false
+                            display: true
                         }
                     },
                     scales: {
                         y: {
-                            beginAtZero: false,
+                            beginAtZero: true,
+                            max: 1.0,
+                            min: 0.0,
                             grid: {
                                 color: 'rgba(0,0,0,0.1)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'ISS Score (0-1)'
                             }
                         },
                         x: {
                             grid: {
                                 color: 'rgba(0,0,0,0.1)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
                             }
                         }
                     }
@@ -491,7 +504,7 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Bank Nifty Futures Meter Value',
+                        label: 'Bank Nifty Futures ISS Score',
                         data: [],
                         borderColor: '#ffc107',
                         backgroundColor: 'rgba(255, 193, 7, 0.1)',
@@ -505,74 +518,146 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false
+                            display: true
                         }
                     },
                     scales: {
                         y: {
-                            beginAtZero: false,
+                            beginAtZero: true,
+                            max: 1.0,
+                            min: 0.0,
                             grid: {
                                 color: 'rgba(0,0,0,0.1)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'ISS Score (0-1)'
                             }
                         },
                         x: {
                             grid: {
                                 color: 'rgba(0,0,0,0.1)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
                             }
                         }
                     }
                 }
             });
+            
+            console.log('✅ Charts created successfully');
+            
+            // Load initial data
+            setTimeout(() => {
+                updateCharts();
+            }, 1000);
         }
 
         function updateCharts() {
+            console.log('📈 Starting chart update...');
+            
             fetch('/api/chart-data')
-                .then(response => response.json())
+                .then(response => {
+                    console.log('📡 Response received:', response.status);
+                    return response.json();
+                })
                 .then(data => {
-                    if (data.status === 'success') {
-                        // Update chart data
-                        const niftyHistory = data.nifty_futures_history;
-                        const bankHistory = data.bank_futures_history;
-                        
-                        // Extract timestamps and values
-                        const timestamps = niftyHistory.map(point => point.timestamp);
-                        const niftyValues = niftyHistory.map(point => point.nifty_meter);
-                        const bankValues = bankHistory.map(point => point.bank_meter);
-                        
-                        // Update NIFTY chart
-                        niftyChart.data.labels = timestamps;
+                    console.log('� Full chart data received:', data);
+                    
+                    if (data.status !== 'success') {
+                        console.error('❌ API returned error status:', data.message);
+                        return;
+                    }
+                    
+                    console.log('� Data source:', data.data_source);
+                    console.log('🎯 NIFTY data points:', data.nifty_futures_history ? data.nifty_futures_history.length : 0);
+                    console.log('🏦 Bank NIFTY data points:', data.bank_futures_history ? data.bank_futures_history.length : 0);
+                    
+                    if (!data.nifty_futures_history || !data.bank_futures_history) {
+                        console.error('❌ Missing chart data arrays');
+                        return;
+                    }
+                    
+                    // NIFTY 50 FUTURES Chart
+                    const niftyLabels = data.nifty_futures_history.map(item => {
+                        // Use the timestamp field for labels
+                        return item.timestamp;
+                    });
+                    const niftyValues = data.nifty_futures_history.map(item => parseFloat(item.nifty_meter));
+                    
+                    console.log('🎯 NIFTY Labels sample:', niftyLabels.slice(0, 3));
+                    console.log('🎯 NIFTY Values sample:', niftyValues.slice(0, 3));
+                    
+                    if (niftyChart && niftyChart.data) {
+                        niftyChart.data.labels = niftyLabels;
                         niftyChart.data.datasets[0].data = niftyValues;
-                        niftyChart.update('none');
-                        
-                        // Update BANK chart
-                        bankChart.data.labels = timestamps;
+                        niftyChart.update('none'); // Use 'none' mode for immediate update
+                        console.log('✅ NIFTY chart updated with', niftyValues.length, 'points');
+                    } else {
+                        console.error('❌ NIFTY chart not initialized');
+                    }
+                    
+                    // BANK NIFTY FUTURES Chart
+                    const bankLabels = data.bank_futures_history.map(item => {
+                        // Use the timestamp field for labels
+                        return item.timestamp;
+                    });
+                    const bankValues = data.bank_futures_history.map(item => parseFloat(item.bank_meter));
+                    
+                    console.log('🏦 Bank Labels sample:', bankLabels.slice(0, 3));
+                    console.log('🏦 Bank Values sample:', bankValues.slice(0, 3));
+                    
+                    if (bankChart && bankChart.data) {
+                        bankChart.data.labels = bankLabels;
                         bankChart.data.datasets[0].data = bankValues;
-                        bankChart.update('none');
-                        
-                        // Update impact badges
+                        bankChart.update('none'); // Use 'none' mode for immediate update
+                        console.log('✅ Bank chart updated with', bankValues.length, 'points');
+                    } else {
+                        console.error('❌ Bank chart not initialized');
+                    }
+                    
+                    // Update impact badges
+                    if (data.current.nifty_impact) {
                         const niftyBadge = document.getElementById('niftyImpactBadge');
-                        const bankBadge = document.getElementById('bankImpactBadge');
-                        
-                        if (data.current.nifty_impact) {
-                            niftyBadge.textContent = `${data.current.nifty_impact.icon} ${data.current.nifty_impact.status}`;
-                            niftyBadge.className = `badge ms-2 bg-${data.current.nifty_impact.color}`;
-                        }
-                        
-                        if (data.current.bank_impact) {
-                            bankBadge.textContent = `${data.current.bank_impact.icon} ${data.current.bank_impact.status}`;
-                            bankBadge.className = `badge ms-2 bg-${data.current.bank_impact.color}`;
-                        }
-                        
-                        // Update data source indicator
-                        const dataSourceEl = document.getElementById('dataSource');
-                        if (dataSourceEl) {
-                            const source = data.data_source === 'google_sheets' ? '📊 Google Sheets' : '💾 Memory Cache';
-                            const points = data.data_points || 0;
-                            dataSourceEl.textContent = `${source} (${points} points)`;
+                        if (niftyBadge) {
+                            niftyBadge.textContent = `${data.current.nifty_impact.icon || ''} ${data.current.nifty_impact.status}`;
+                            niftyBadge.className = `badge ms-2 bg-${data.current.nifty_impact.color || 'secondary'}`;
                         }
                     }
+                    
+                    if (data.current.bank_impact) {
+                        const bankBadge = document.getElementById('bankImpactBadge');
+                        if (bankBadge) {
+                            bankBadge.textContent = `${data.current.bank_impact.icon || ''} ${data.current.bank_impact.status}`;
+                            bankBadge.className = `badge ms-2 bg-${data.current.bank_impact.color || 'secondary'}`;
+                        }
+                    }
+                    
+                    // Update data source indicator
+                    const dataSourceEl = document.getElementById('dataSource');
+                    if (dataSourceEl) {
+                        const source = data.data_source === 'google_sheets' ? '📊 Google Sheets' : '💾 Memory Cache';
+                        const points = data.data_points || 0;
+                        dataSourceEl.textContent = `${source} (${points} points)`;
+                    }
+                    
+                    // Update status on page
+                    const chartInfo = document.querySelector('.chart-info');
+                    if (chartInfo) {
+                        chartInfo.innerHTML = `📊 ${data.data_source} (${Math.max(niftyValues.length, bankValues.length)} points) - Last updated: ${new Date().toLocaleTimeString('en-IN')}`;
+                    }
+                    
+                    console.log('🎉 Chart update completed successfully');
                 })
-                .catch(error => console.error('Error updating charts:', error));
+                .catch(error => {
+                    console.error('💥 Error updating charts:', error);
+                    const chartInfo = document.querySelector('.chart-info');
+                    if (chartInfo) {
+                        chartInfo.innerHTML = `❌ Error loading chart data: ${error.message}`;
+                    }
+                });
         }
 
         // FIXED: Load data and create DataTable in correct order
