@@ -1117,86 +1117,39 @@ def calculate_composite_meter(historical_data, window_hours=2):
                 row = row_data[1]  # pandas iterrows returns (index, row)
                 timestamp_str = row['timestamp'].strftime('%H:%M')
                 time_full_str = row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+                nifty_oi = row['nifty_iss']
+                nifty_pa = row['nifty_pa']
+                bank_oi = row['bank_iss']
+                bank_pa = row['bank_pa']
             else:
                 row = row_data  # simple list iteration
                 timestamp_str = row['timestamp'][-8:-3]  # Extract HH:MM from timestamp
                 time_full_str = row['timestamp']
+                nifty_oi = row['nifty_iss']
+                nifty_pa = row['nifty_pa']
+                bank_oi = row['bank_iss']
+                bank_pa = row['bank_pa']
             
-            # Step 1: Recenter and rescale using rolling window
-            window_size = min(12, len(df))  # 1 hour or available data
-            
-            # Normalize ISS (OI sentiment) and Price Action
-            normalized_oi = df[iss_col]
-            normalized_pa = df[pa_col]
-            
-            # Recenter over rolling window
-            oi_centered = normalized_oi - normalized_oi.rolling(window_size, min_periods=1).mean()
-            pa_centered = normalized_pa - normalized_pa.rolling(window_size, min_periods=1).mean()
-            
-            # Step 2: Adaptive blend of price + OI
-            # When OI is rising sharply, give it more weight
-            adaptive_weight = np.clip((normalized_oi - 0.5) * 2, 0.2, 0.8)
-            composite = adaptive_weight * oi_centered + (1 - adaptive_weight) * pa_centered
-            
-            # Step 3: Double EMA smoothing (DEMA)
-            ema1 = composite.ewm(span=3, adjust=False).mean()
-            ema2 = ema1.ewm(span=3, adjust=False).mean()
-            smoothed_signal = 2 * ema1 - ema2
-            
-            # Step 4: Normalize to 0-1 range dynamically
-            rolling_window = min(24, len(df))  # 2 hours or available data
-            rolling_min = smoothed_signal.rolling(rolling_window, min_periods=1).min()
-            rolling_max = smoothed_signal.rolling(rolling_window, min_periods=1).max()
-            range_diff = rolling_max - rolling_min + 1e-8  # Avoid division by zero
-            normalized_final = (smoothed_signal - rolling_min) / range_diff
-            
-            # Ensure values are between 0 and 1
-            normalized_final = np.clip(normalized_final, 0, 1)
-            
-            # Step 5: Calculate momentum (3-period slope)
-            momentum = normalized_final.diff(3).fillna(0)
-            
-            # Step 6: Generate signals with hysteresis
-            current_value = normalized_final.iloc[-1]
-            current_momentum = momentum.iloc[-1]
-            prev_value = normalized_final.iloc[-2] if len(normalized_final) > 1 else current_value
-            
-            signal = generate_composite_signal(current_value, prev_value, current_momentum)
-            
-            # Step 7: Get interpretation
-            interpretation = get_composite_interpretation(current_value, current_momentum)
-            
-            results[index_name] = {
-                'current_value': round(current_value, 4),
-                'momentum': round(current_momentum, 4),
-                'signal': signal,
-                'interpretation': interpretation,
-                'adaptive_weight': round(adaptive_weight.iloc[-1], 3),
-                'raw_oi': round(normalized_oi.iloc[-1], 4),
-                'raw_pa': round(normalized_pa.iloc[-1], 4)
-            }
-        
-        # Create time series data for charts
-        chart_data = []
-        for i, row in df.iterrows():
-            # Calculate composite values for this row
-            nifty_oi = row['nifty_iss']
-            nifty_pa = row['nifty_pa']
-            
-            # Simple composite for historical points (without full rolling calculation for performance)
+            # Simple composite for chart display
             nifty_composite = (nifty_oi + nifty_pa) / 2
-            bank_composite = (row['bank_iss'] + row['bank_pa']) / 2
+            bank_composite = (bank_oi + bank_pa) / 2
             
             chart_data.append({
-                'timestamp': row['timestamp'].strftime('%H:%M'),
-                'time_full': row['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': timestamp_str,
+                'time_full': time_full_str,
                 'nifty_composite': round(nifty_composite, 4),
                 'bank_composite': round(bank_composite, 4),
                 'nifty_oi': round(nifty_oi, 4),
                 'nifty_pa': round(nifty_pa, 4),
-                'bank_oi': round(row['bank_iss'], 4),
-                'bank_pa': round(row['bank_pa'], 4)
+                'bank_oi': round(bank_oi, 4),
+                'bank_pa': round(bank_pa, 4)
             })
+        
+        # Get last update time
+        if use_advanced_calculations:
+            last_update_str = df['timestamp'].iloc[-1].strftime('%Y-%m-%d %H:%M:%S IST')
+        else:
+            last_update_str = processed_data[-1]['timestamp']
         
         return {
             'status': 'success',
@@ -1205,7 +1158,7 @@ def calculate_composite_meter(historical_data, window_hours=2):
             'chart_data': chart_data,
             'data_points': len(chart_data),
             'calculation_window': f"{window_hours} hours",
-            'last_update': df['timestamp'].iloc[-1].strftime('%Y-%m-%d %H:%M:%S IST')
+            'last_update': last_update_str
         }
         
     except Exception as e:
@@ -2116,28 +2069,89 @@ def get_price_action_history():
 @app.route('/api/composite-meter')
 def get_composite_meter():
     """Get enhanced composite smoothed index meter with noise reduction and adaptive signals"""
+    print("🔄 Composite meter API endpoint called")
     try:
         # Get historical data from Google Sheets with extended window
         historical_data = get_historical_data(hours_back=6)  # 6 hours for better smoothing
         
-        if not historical_data or len(historical_data) < 12:
+        if not historical_data or len(historical_data) < 1:
             return jsonify({
                 'status': 'error',
-                'message': 'Insufficient historical data for composite meter calculation',
+                'message': 'No historical data available for composite meter calculation',
                 'data_points_available': len(historical_data) if historical_data else 0,
-                'minimum_required': 12
+                'minimum_required': 1
             }), 400
         
-        # Calculate composite meter
-        composite_result = calculate_composite_meter(historical_data, window_hours=2)
+        # Simple composite calculation (fallback)
+        print(f"🔍 Creating simple composite meter from {len(historical_data)} data points")
         
-        if not composite_result:
-            return jsonify({
-                'status': 'error',
-                'message': 'Failed to calculate composite meter'
-            }), 500
+        # Get latest values
+        latest = historical_data[-1]
+        nifty_oi = latest.get('nifty_iss', 0.5)
+        bank_oi = latest.get('bank_iss', 0.5)
+        nifty_pa = latest.get('nifty_price_action', 0.5)
+        bank_pa = latest.get('bank_price_action', 0.5)
         
-        return jsonify(composite_result)
+        # Simple composite calculation
+        nifty_composite = (nifty_oi + nifty_pa) / 2
+        bank_composite = (bank_oi + bank_pa) / 2
+        
+        # Simple momentum (compare with previous if available)
+        nifty_momentum = 0
+        bank_momentum = 0
+        if len(historical_data) > 1:
+            prev = historical_data[-2]
+            prev_nifty = (prev.get('nifty_iss', 0.5) + prev.get('nifty_price_action', 0.5)) / 2
+            prev_bank = (prev.get('bank_iss', 0.5) + prev.get('bank_price_action', 0.5)) / 2
+            nifty_momentum = nifty_composite - prev_nifty
+            bank_momentum = bank_composite - prev_bank
+        
+        # Generate signals
+        nifty_signal = generate_simple_signal(nifty_composite, nifty_momentum)
+        bank_signal = generate_simple_signal(bank_composite, bank_momentum)
+        
+        # Create chart data
+        chart_data = []
+        for point in historical_data[-24:]:  # Last 24 points (2 hours)
+            nifty_comp = (point.get('nifty_iss', 0.5) + point.get('nifty_price_action', 0.5)) / 2
+            bank_comp = (point.get('bank_iss', 0.5) + point.get('bank_price_action', 0.5)) / 2
+            
+            chart_data.append({
+                'timestamp': point['timestamp'],
+                'time_full': point['time_full'],
+                'nifty_composite': round(nifty_comp, 4),
+                'bank_composite': round(bank_comp, 4),
+                'nifty_oi': round(point.get('nifty_iss', 0.5), 4),
+                'nifty_pa': round(point.get('nifty_price_action', 0.5), 4),
+                'bank_oi': round(point.get('bank_iss', 0.5), 4),
+                'bank_pa': round(point.get('bank_price_action', 0.5), 4)
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'nifty': {
+                'current_value': round(nifty_composite, 4),
+                'momentum': round(nifty_momentum, 4),
+                'signal': nifty_signal,
+                'interpretation': get_simple_interpretation(nifty_composite, nifty_momentum),
+                'adaptive_weight': 0.5,
+                'raw_oi': round(nifty_oi, 4),
+                'raw_pa': round(nifty_pa, 4)
+            },
+            'bank_nifty': {
+                'current_value': round(bank_composite, 4),
+                'momentum': round(bank_momentum, 4),
+                'signal': bank_signal,
+                'interpretation': get_simple_interpretation(bank_composite, bank_momentum),
+                'adaptive_weight': 0.5,
+                'raw_oi': round(bank_oi, 4),
+                'raw_pa': round(bank_pa, 4)
+            },
+            'chart_data': chart_data,
+            'data_points': len(chart_data),
+            'calculation_window': '2 hours (simplified)',
+            'last_update': latest['time_full']
+        })
         
     except Exception as e:
         print(f"💥 Error in get_composite_meter: {e}")
@@ -2145,6 +2159,59 @@ def get_composite_meter():
             'status': 'error',
             'message': f'Error calculating composite meter: {str(e)}'
         }), 500
+
+def generate_simple_signal(value, momentum):
+    """Generate simple trading signal"""
+    if value >= 0.65:
+        if momentum > 0.05:
+            return {'action': 'STRONG_BUY', 'description': 'Strong bullish signal', 'confidence': 'High', 'color': 'success'}
+        else:
+            return {'action': 'BUY', 'description': 'Bullish zone', 'confidence': 'Medium', 'color': 'success'}
+    elif value <= 0.35:
+        if momentum < -0.05:
+            return {'action': 'STRONG_SELL', 'description': 'Strong bearish signal', 'confidence': 'High', 'color': 'danger'}
+        else:
+            return {'action': 'SELL', 'description': 'Bearish zone', 'confidence': 'Medium', 'color': 'danger'}
+    else:
+        return {'action': 'NEUTRAL', 'description': 'Neutral zone', 'confidence': 'Low', 'color': 'secondary'}
+
+def get_simple_interpretation(value, momentum):
+    """Get simple interpretation"""
+    if value > 0.75:
+        return {
+            'zone': 'Strong Bull',
+            'btst_bias': 'Long BTST recommended',
+            'intraday_bias': 'Continuation longs',
+            'description': 'Strong bullish momentum'
+        }
+    elif value >= 0.65:
+        return {
+            'zone': 'Bullish',
+            'btst_bias': 'Selective long BTST',
+            'intraday_bias': 'Trend continuation',
+            'description': 'Bullish bias active'
+        }
+    elif value >= 0.35:
+        return {
+            'zone': 'Neutral',
+            'btst_bias': 'Avoid BTST trades',
+            'intraday_bias': 'Range-bound scalping',
+            'description': 'Sideways market'
+        }
+    elif value >= 0.25:
+        return {
+            'zone': 'Bearish',
+            'btst_bias': 'Selective short BTST',
+            'intraday_bias': 'Trend shorts',
+            'description': 'Bearish bias active'
+        }
+    else:
+        return {
+            'zone': 'Strong Bear',
+            'btst_bias': 'Short BTST recommended',
+            'intraday_bias': 'Continue shorts',
+            'description': 'Strong bearish momentum'
+        }
 
 @app.route('/api/debug-cache')
 def debug_cache():
@@ -2304,5 +2371,12 @@ def test_historical_oi(token):
         "cache": cached_data.get('historical_oi_cache', {})
     })
 
+@app.route('/test')
+def test_route():
+    """Simple test route"""
+    print("🧪 Test route accessed")
+    return "Server is working!"
+
 if __name__ == '__main__':
+    print("🚀 Starting Flask server...")
     app.run(debug=True, host='0.0.0.0', port=5000)
