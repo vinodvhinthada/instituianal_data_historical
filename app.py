@@ -151,6 +151,11 @@ def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_pr
             nifty_price_action = calculate_index_price_action(nifty_futures_data, NIFTY_50_WEIGHTS)
             bank_price_action = calculate_index_price_action(bank_futures_data, BANK_NIFTY_WEIGHTS)
         
+        # Skip saving if price action calculations failed
+        if nifty_price_action is None or bank_price_action is None:
+            print("⚠️ Skipping historical data save - price action calculations returned None")
+            return False
+        
         # Get price action zones
         nifty_pa_zone = get_price_action_zone(nifty_price_action)['zone']
         bank_pa_zone = get_price_action_zone(bank_price_action)['zone']
@@ -236,10 +241,13 @@ def get_historical_data(hours_back=24):
                 
                 # Only include recent data
                 if record_time >= cutoff_time:
-                    # Extract data with safe defaults
+                    # Extract data - skip rows with missing critical data
+                    if not (len(row) > 2 and row[2]) or not (len(row) > 3 and row[3]):
+                        continue  # Skip rows without valid ISS values
+                    
                     ist_time = row[1] if len(row) > 1 and row[1] else timestamp_str.split(' ')[1][:5]
-                    nifty_iss = float(row[2]) if len(row) > 2 and row[2] else 0.5
-                    bank_iss = float(row[3]) if len(row) > 3 and row[3] else 0.5
+                    nifty_iss = float(row[2])  # No default, must have valid data
+                    bank_iss = float(row[3])   # No default, must have valid data
                     nifty_status = row[4] if len(row) > 4 and row[4] else 'Neutral'
                     bank_status = row[5] if len(row) > 5 and row[5] else 'Neutral'
                     session = row[6] if len(row) > 6 and row[6] else 'Unknown'
@@ -854,13 +862,20 @@ def calculate_price_strength(ltp, high, low):
     Returns value between 0 and 1
     """
     try:
-        if high == low:  # Avoid division by zero
-            return 0.5  # Neutral if no range
+        # Validate inputs
+        if not all(isinstance(x, (int, float)) and x > 0 for x in [ltp, high, low]):
+            return None  # Invalid data
+        
+        if high == low:  # No intraday movement
+            return None  # Can't calculate without range
+        
+        if high < low:  # Invalid data
+            return None
         
         price_strength = (ltp - low) / (high - low)
         return max(0, min(1, price_strength))  # Clamp between 0 and 1
     except:
-        return 0.5  # Default to neutral on error
+        return None  # Return None for invalid data
 
 def calculate_index_price_action(stocks_data, index_weights):
     """
@@ -875,7 +890,7 @@ def calculate_index_price_action(stocks_data, index_weights):
         # Handle None or empty data
         if not stocks_data or stocks_data is None:
             print("⚠️ No stocks data provided for price action calculation")
-            return 0.5  # Return neutral score
+            return None  # Return None for no data
             
         total_weighted_strength = 0
         total_weights = 0
@@ -899,17 +914,19 @@ def calculate_index_price_action(stocks_data, index_weights):
             weight = index_weights.get(clean_symbol, 0)
             if weight > 0 and high > 0 and low > 0 and ltp > 0:
                 price_strength = calculate_price_strength(ltp, high, low)
-                total_weighted_strength += weight * price_strength
-                total_weights += weight
-                matched_stocks += 1
-                processed_stocks.append({
-                    'symbol': clean_symbol,
-                    'ltp': ltp,
-                    'high': high,
-                    'low': low,
-                    'strength': price_strength,
-                    'weight': weight
-                })
+                # Only include stocks with valid price strength calculation
+                if price_strength is not None:
+                    total_weighted_strength += weight * price_strength
+                    total_weights += weight
+                    matched_stocks += 1
+                    processed_stocks.append({
+                        'symbol': clean_symbol,
+                        'ltp': ltp,
+                        'high': high,
+                        'low': low,
+                        'strength': price_strength,
+                        'weight': weight
+                    })
         
         print(f"📊 Price Action Processing: {matched_stocks} stocks matched, total weight: {total_weights:.2f}")
         if len(processed_stocks) > 0:
@@ -920,7 +937,7 @@ def calculate_index_price_action(stocks_data, index_weights):
         
         if total_weights == 0:
             print("⚠️ No valid stocks matched for price action calculation")
-            return 0.5  # Neutral if no valid data
+            return None  # Return None if no valid data
         
         # Calculate weighted average
         index_score = total_weighted_strength / total_weights
@@ -929,7 +946,7 @@ def calculate_index_price_action(stocks_data, index_weights):
     
     except Exception as e:
         print(f"❌ Error calculating index price action: {e}")
-        return 0.5
+        return None  # Return None for errors
 
 def get_price_action_zone(score):
     """
@@ -1301,8 +1318,14 @@ def refresh_data():
         
         print(f"📊 Calculated price actions: NIFTY={nifty_price_action}, Bank={bank_price_action}")
         
-        # Save to Google Sheets for historical data (including price action)
-        append_historical_data(nifty_iss, bank_iss, nifty_price_action, bank_price_action)
+        # Only save if we have valid price action calculations
+        if nifty_price_action is not None and bank_price_action is not None:
+            # Save to Google Sheets for historical data (including price action)
+            append_historical_data(nifty_iss, bank_iss, nifty_price_action, bank_price_action)
+        else:
+            print("⚠️ Skipping historical data save - invalid price action calculations")
+            # Save ISS data only
+            append_historical_data(nifty_iss, bank_iss, None, None)
         
         print("✅ Data refresh completed successfully!")
         
@@ -1454,6 +1477,17 @@ def get_price_action():
         nifty_price_score = calculate_index_price_action(nifty_futures_data, NIFTY_50_WEIGHTS)
         bank_price_score = calculate_index_price_action(bank_futures_data, BANK_NIFTY_WEIGHTS)
         
+        # Handle None values - only proceed if we have valid calculations
+        if nifty_price_score is None or bank_price_score is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unable to calculate price action - insufficient valid data',
+                'nifty_calculated': nifty_price_score is not None,
+                'bank_calculated': bank_price_score is not None,
+                'nifty_data_count': len(nifty_futures_data) if nifty_futures_data else 0,
+                'bank_data_count': len(bank_futures_data) if bank_futures_data else 0
+            }), 400
+        
         print(f"📊 Price action scores: NIFTY={nifty_price_score}, Bank={bank_price_score}")
         
         # Get zone classifications
@@ -1499,11 +1533,15 @@ def get_price_action_history():
             price_history = []
             for point in historical_data:
                 try:
+                    # Skip rows with missing critical price action data
+                    if not point.get('nifty_price_action') or not point.get('bank_price_action'):
+                        continue
+                    
                     chart_point = {
                         'timestamp': point['timestamp'],
                         'time_full': point['time_full'],
-                        'nifty_price_action': float(point.get('nifty_price_action', 0.5)),
-                        'bank_price_action': float(point.get('bank_price_action', 0.5)),
+                        'nifty_price_action': float(point['nifty_price_action']),
+                        'bank_price_action': float(point['bank_price_action']),
                         'nifty_pa_zone': point.get('nifty_pa_zone', 'Neutral'),
                         'bank_pa_zone': point.get('bank_pa_zone', 'Neutral')
                     }
