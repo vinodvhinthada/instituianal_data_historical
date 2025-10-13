@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Market Strength Meter - Noise-Free Composite Index</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container-fluid {
+            padding: 20px;
+        }
+        
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: none;
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.5rem;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+            transition: transform 0.3s;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .signal-strong-buy { background: linear-gradient(135deg, #4CAF50, #45a049); }
+        .signal-buy { background: linear-gradient(135deg, #8BC34A, #689F38); }
+        .signal-neutral { background: linear-gradient(135deg, #9E9E9E, #757575); }
+        .signal-sell { background: linear-gradient(135deg, #FF5722, #D84315); }
+        .signal-strong-sell { background: linear-gradient(135deg, #f44336, #d32f2f); }
+        .signal-hold-long { background: linear-gradient(135deg, #2196F3, #1976D2); }
+        .signal-hold-short { background: linear-gradient(135deg, #FF9800, #F57C00); }
+        
+        .chart-container {
+            position: relative;
+            height: 500px;
+            margin: 20px 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+        
+        .momentum-indicator {
+            font-size: 24px;
+            margin: 0 10px;
+        }
+        
+        .zone-bands {
+            background: linear-gradient(to right, 
+                rgba(244, 67, 54, 0.2) 0%, rgba(244, 67, 54, 0.2) 35%,
+                rgba(158, 158, 158, 0.2) 35%, rgba(158, 158, 158, 0.2) 65%,
+                rgba(76, 175, 80, 0.2) 65%, rgba(76, 175, 80, 0.2) 100%);
+            height: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        
+        .interpretation-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h1><i class="fas fa-chart-line"></i> Enhanced Market Strength Meter</h1>
+                        <p class="mb-0">Noise-Free Composite Index with Adaptive Blending & Smart Smoothing</p>
+                        <small id="lastUpdate" class="text-light">Loading...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Status Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div id="niftyCard" class="metric-card">
+                    <h4><i class="fas fa-chart-bar"></i> NIFTY 50 Composite</h4>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="h2 mb-0" id="niftyValue">Loading...</div>
+                            <small id="niftyMomentum">Momentum: --</small>
+                        </div>
+                        <div class="text-end">
+                            <div id="niftySignal" class="h5 mb-1">--</div>
+                            <div id="niftyZone" class="small">--</div>
+                        </div>
+                    </div>
+                    <div class="interpretation-card mt-3" id="niftyInterpretation">
+                        <strong>BTST:</strong> <span id="niftyBTST">--</span><br>
+                        <strong>Intraday:</strong> <span id="niftyIntraday">--</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div id="bankCard" class="metric-card">
+                    <h4><i class="fas fa-university"></i> Bank NIFTY Composite</h4>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="h2 mb-0" id="bankValue">Loading...</div>
+                            <small id="bankMomentum">Momentum: --</small>
+                        </div>
+                        <div class="text-end">
+                            <div id="bankSignal" class="h5 mb-1">--</div>
+                            <div id="bankZone" class="small">--</div>
+                        </div>
+                    </div>
+                    <div class="interpretation-card mt-3" id="bankInterpretation">
+                        <strong>BTST:</strong> <span id="bankBTST">--</span><br>
+                        <strong>Intraday:</strong> <span id="bankIntraday">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone Reference -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5><i class="fas fa-layer-group"></i> Trading Zones Reference</h5>
+                        <div class="zone-bands"></div>
+                        <div class="row text-center">
+                            <div class="col-2"><small class="text-danger">Strong Bear<br>0.0 - 0.25</small></div>
+                            <div class="col-2"><small class="text-warning">Bearish<br>0.25 - 0.35</small></div>
+                            <div class="col-4"><small class="text-secondary">Neutral/Choppy<br>0.35 - 0.65</small></div>
+                            <div class="col-2"><small class="text-info">Bullish<br>0.65 - 0.75</small></div>
+                            <div class="col-2"><small class="text-success">Strong Bull<br>0.75 - 1.0</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row">
+            <!-- Composite Meter Chart -->
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-area"></i> Composite Strength Meter (Smoothed)</h5>
+                        <small>Adaptive blend of Price Action + OI Sentiment with noise reduction</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="compositeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Component Analysis -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="fas fa-layer-group"></i> NIFTY Components</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="niftyComponentsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="fas fa-layer-group"></i> Bank NIFTY Components</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="bankComponentsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Details -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="fas fa-cogs"></i> Technical Implementation Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6>Step 1: Recentering</h6>
+                                <p><small>Normalizes price action and OI against 1-hour rolling average to remove daily baseline shifts</small></p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Step 2: Adaptive Blending</h6>
+                                <p><small>Dynamic weighting: when OI surges, price movements get more weight (conviction-based)</small></p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Step 3: Double EMA</h6>
+                                <p><small>DEMA smoothing eliminates noise while maintaining responsiveness to real moves</small></p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6>Step 4: Dynamic Normalization</h6>
+                                <p><small>Re-scales to 0-1 range using 2-hour rolling min/max for consistent interpretation</small></p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Step 5: Momentum Scoring</h6>
+                                <p><small>3-period slope calculation to confirm signal strength and direction</small></p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Step 6: Hysteresis Signals</h6>
+                                <p><small>Prevents false alerts with threshold-based signal generation and momentum confirmation</small></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let compositeChart, niftyComponentsChart, bankComponentsChart;
+        
+        // Initialize charts
+        function initializeCharts() {
+            const ctx1 = document.getElementById('compositeChart').getContext('2d');
+            compositeChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'NIFTY Composite',
+                            data: [],
+                            borderColor: '#2196F3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Bank NIFTY Composite',
+                            data: [],
+                            borderColor: '#FF5722',
+                            backgroundColor: 'rgba(255, 87, 34, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 1,
+                            ticks: {
+                                callback: function(value) {
+                                    return (value * 100).toFixed(0) + '%';
+                                }
+                            },
+                            grid: {
+                                color: function(context) {
+                                    if (context.tick.value === 0.35 || context.tick.value === 0.65) {
+                                        return 'rgba(255, 193, 7, 0.8)';
+                                    }
+                                    if (context.tick.value === 0.5) {
+                                        return 'rgba(108, 117, 125, 0.8)';
+                                    }
+                                    return 'rgba(0, 0, 0, 0.1)';
+                                }
+                            }
+                        },
+                        x: {
+                            type: 'category',
+                            ticks: {
+                                maxTicksLimit: 20
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        annotation: {
+                            annotations: {
+                                neutralZone: {
+                                    type: 'box',
+                                    yMin: 0.35,
+                                    yMax: 0.65,
+                                    backgroundColor: 'rgba(158, 158, 158, 0.1)',
+                                    borderColor: 'rgba(158, 158, 158, 0.3)',
+                                    borderWidth: 1
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Component charts
+            const ctx2 = document.getElementById('niftyComponentsChart').getContext('2d');
+            niftyComponentsChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Price Action',
+                            data: [],
+                            borderColor: '#4CAF50',
+                            backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        },
+                        {
+                            label: 'OI Sentiment',
+                            data: [],
+                            borderColor: '#2196F3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 1
+                        }
+                    }
+                }
+            });
+
+            const ctx3 = document.getElementById('bankComponentsChart').getContext('2d');
+            bankComponentsChart = new Chart(ctx3, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Price Action',
+                            data: [],
+                            borderColor: '#4CAF50',
+                            backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        },
+                        {
+                            label: 'OI Sentiment',
+                            data: [],
+                            borderColor: '#2196F3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update displays
+        function updateDisplay(data) {
+            if (data.status !== 'success') {
+                console.error('API Error:', data.message);
+                return;
+            }
+
+            // Update last update time
+            document.getElementById('lastUpdate').textContent = `Last updated: ${data.last_update}`;
+
+            // Update NIFTY data
+            updateIndexCard('nifty', data.nifty);
+            updateIndexCard('bank', data.bank_nifty);
+
+            // Update charts
+            updateCharts(data.chart_data);
+        }
+
+        function updateIndexCard(prefix, indexData) {
+            const value = (indexData.current_value * 100).toFixed(1);
+            const momentum = indexData.momentum > 0 ? '↗️' : indexData.momentum < 0 ? '↘️' : '➡️';
+            
+            document.getElementById(`${prefix}Value`).textContent = value + '%';
+            document.getElementById(`${prefix}Momentum`).textContent = `Momentum: ${momentum} ${(indexData.momentum * 100).toFixed(2)}%`;
+            document.getElementById(`${prefix}Signal`).textContent = indexData.signal.action.replace('_', ' ');
+            document.getElementById(`${prefix}Zone`).textContent = indexData.interpretation.zone;
+            
+            // Update BTST and Intraday recommendations
+            document.getElementById(`${prefix}BTST`).textContent = indexData.interpretation.btst_bias;
+            document.getElementById(`${prefix}Intraday`).textContent = indexData.interpretation.intraday_bias;
+
+            // Update card color based on signal
+            const card = document.getElementById(`${prefix}Card`);
+            card.className = `metric-card signal-${indexData.signal.action.toLowerCase().replace('_', '-')}`;
+        }
+
+        function updateCharts(chartData) {
+            if (!chartData || chartData.length === 0) return;
+
+            const labels = chartData.map(point => point.timestamp);
+            const niftyComposite = chartData.map(point => point.nifty_composite);
+            const bankComposite = chartData.map(point => point.bank_composite);
+            const niftyPA = chartData.map(point => point.nifty_pa);
+            const niftyOI = chartData.map(point => point.nifty_oi);
+            const bankPA = chartData.map(point => point.bank_pa);
+            const bankOI = chartData.map(point => point.bank_oi);
+
+            // Update composite chart
+            compositeChart.data.labels = labels;
+            compositeChart.data.datasets[0].data = niftyComposite;
+            compositeChart.data.datasets[1].data = bankComposite;
+            compositeChart.update('none');
+
+            // Update component charts
+            niftyComponentsChart.data.labels = labels;
+            niftyComponentsChart.data.datasets[0].data = niftyPA;
+            niftyComponentsChart.data.datasets[1].data = niftyOI;
+            niftyComponentsChart.update('none');
+
+            bankComponentsChart.data.labels = labels;
+            bankComponentsChart.data.datasets[0].data = bankPA;
+            bankComponentsChart.data.datasets[1].data = bankOI;
+            bankComponentsChart.update('none');
+        }
+
+        // Fetch data
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/composite-meter');
+                const data = await response.json();
+                updateDisplay(data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            fetchData();
+            
+            // Auto-refresh every 5 minutes (300 seconds)
+            setInterval(fetchData, 300000);
+        });
+    </script>
+</body>
+</html>
