@@ -1059,15 +1059,21 @@ def calculate_composite_meter(historical_data, window_hours=2):
         if not historical_data or len(historical_data) < 12:  # Need at least 1 hour of data
             return None
         
-        import pandas as pd
-        import numpy as np
+        # Try to import pandas/numpy, fallback to simple calculations if not available
+        try:
+            import pandas as pd
+            import numpy as np
+            use_advanced_calculations = True
+        except ImportError:
+            print("⚠️ Pandas/numpy not available, using simplified calculations")
+            use_advanced_calculations = False
         
-        # Convert to DataFrame for easier processing
-        df_data = []
+        # Convert to list format for processing
+        processed_data = []
         for point in historical_data:
             if (point.get('nifty_price_action') is not None and 
                 point.get('bank_price_action') is not None):
-                df_data.append({
+                processed_data.append({
                     'timestamp': point['time_full'],
                     'nifty_iss': point['nifty_iss'],
                     'bank_iss': point['bank_iss'],
@@ -1075,18 +1081,46 @@ def calculate_composite_meter(historical_data, window_hours=2):
                     'bank_pa': point['bank_price_action']
                 })
         
-        if len(df_data) < 12:
+        if len(processed_data) < 12:
             return None
         
-        df = pd.DataFrame(df_data)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df = df.sort_values('timestamp').reset_index(drop=True)
+        if use_advanced_calculations:
+            # Advanced pandas-based calculations
+            df = pd.DataFrame(processed_data)
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df = df.sort_values('timestamp').reset_index(drop=True)
+        else:
+            # Simple list-based calculations
+            processed_data.sort(key=lambda x: x['timestamp'])
         
         # Calculate for both NIFTY and Bank NIFTY
         results = {}
         
-        for index_name, iss_col, pa_col in [('nifty', 'nifty_iss', 'nifty_pa'), 
-                                           ('bank_nifty', 'bank_iss', 'bank_pa')]:
+        if use_advanced_calculations:
+            # Advanced pandas-based calculations
+            data_source = df
+            for index_name, iss_col, pa_col in [('nifty', 'nifty_iss', 'nifty_pa'), 
+                                               ('bank_nifty', 'bank_iss', 'bank_pa')]:
+                results[index_name] = calculate_advanced_composite(data_source, iss_col, pa_col)
+        else:
+            # Simplified calculations without pandas
+            for index_name, iss_key, pa_key in [('nifty', 'nifty_iss', 'nifty_pa'), 
+                                               ('bank_nifty', 'bank_iss', 'bank_pa')]:
+                results[index_name] = calculate_simple_composite(processed_data, iss_key, pa_key)
+        
+        # Create time series data for charts
+        chart_data = []
+        data_to_iterate = df.iterrows() if use_advanced_calculations else enumerate(processed_data)
+        
+        for i, row_data in data_to_iterate:
+            if use_advanced_calculations:
+                row = row_data[1]  # pandas iterrows returns (index, row)
+                timestamp_str = row['timestamp'].strftime('%H:%M')
+                time_full_str = row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                row = row_data  # simple list iteration
+                timestamp_str = row['timestamp'][-8:-3]  # Extract HH:MM from timestamp
+                time_full_str = row['timestamp']
             
             # Step 1: Recenter and rescale using rolling window
             window_size = min(12, len(df))  # 1 hour or available data
@@ -1177,6 +1211,118 @@ def calculate_composite_meter(historical_data, window_hours=2):
     except Exception as e:
         print(f"❌ Error calculating composite meter: {e}")
         return None
+
+def calculate_advanced_composite(df, iss_col, pa_col):
+    """Advanced pandas-based composite calculation with DEMA smoothing"""
+    import pandas as pd
+    import numpy as np
+    
+    window_size = min(12, len(df))
+    normalized_oi = df[iss_col]
+    normalized_pa = df[pa_col]
+    
+    # Recenter over rolling window
+    oi_centered = normalized_oi - normalized_oi.rolling(window_size, min_periods=1).mean()
+    pa_centered = normalized_pa - normalized_pa.rolling(window_size, min_periods=1).mean()
+    
+    # Adaptive blend
+    adaptive_weight = np.clip((normalized_oi - 0.5) * 2, 0.2, 0.8)
+    composite = adaptive_weight * oi_centered + (1 - adaptive_weight) * pa_centered
+    
+    # Double EMA smoothing
+    ema1 = composite.ewm(span=3, adjust=False).mean()
+    ema2 = ema1.ewm(span=3, adjust=False).mean()
+    smoothed_signal = 2 * ema1 - ema2
+    
+    # Normalize to 0-1 range
+    rolling_window = min(24, len(df))
+    rolling_min = smoothed_signal.rolling(rolling_window, min_periods=1).min()
+    rolling_max = smoothed_signal.rolling(rolling_window, min_periods=1).max()
+    range_diff = rolling_max - rolling_min + 1e-8
+    normalized_final = (smoothed_signal - rolling_min) / range_diff
+    normalized_final = np.clip(normalized_final, 0, 1)
+    
+    # Calculate momentum
+    momentum = normalized_final.diff(3).fillna(0)
+    
+    current_value = normalized_final.iloc[-1]
+    current_momentum = momentum.iloc[-1]
+    prev_value = normalized_final.iloc[-2] if len(normalized_final) > 1 else current_value
+    
+    signal = generate_composite_signal(current_value, prev_value, current_momentum)
+    interpretation = get_composite_interpretation(current_value, current_momentum)
+    
+    return {
+        'current_value': round(current_value, 4),
+        'momentum': round(current_momentum, 4),
+        'signal': signal,
+        'interpretation': interpretation,
+        'adaptive_weight': round(adaptive_weight.iloc[-1], 3),
+        'raw_oi': round(normalized_oi.iloc[-1], 4),
+        'raw_pa': round(normalized_pa.iloc[-1], 4)
+    }
+
+def calculate_simple_composite(data, iss_key, pa_key):
+    """Simplified composite calculation without pandas/numpy"""
+    
+    # Simple moving averages and calculations
+    recent_data = data[-12:]  # Last 12 points (1 hour)
+    
+    oi_values = [point[iss_key] for point in recent_data]
+    pa_values = [point[pa_key] for point in recent_data]
+    
+    # Simple centering using mean
+    oi_mean = sum(oi_values) / len(oi_values)
+    pa_mean = sum(pa_values) / len(pa_values)
+    
+    oi_centered = [val - oi_mean for val in oi_values]
+    pa_centered = [val - pa_mean for val in pa_values]
+    
+    # Simple adaptive weight (last value)
+    last_oi = oi_values[-1]
+    adaptive_weight = max(0.2, min(0.8, (last_oi - 0.5) * 2))
+    
+    # Simple composite blend
+    composite_values = []
+    for i in range(len(oi_centered)):
+        composite = adaptive_weight * oi_centered[i] + (1 - adaptive_weight) * pa_centered[i]
+        composite_values.append(composite)
+    
+    # Simple smoothing (3-point moving average)
+    smoothed = []
+    for i in range(len(composite_values)):
+        if i < 2:
+            smoothed.append(composite_values[i])
+        else:
+            avg = (composite_values[i-2] + composite_values[i-1] + composite_values[i]) / 3
+            smoothed.append(avg)
+    
+    # Simple normalization
+    min_val = min(smoothed)
+    max_val = max(smoothed)
+    range_val = max_val - min_val + 1e-8
+    
+    normalized = [(val - min_val) / range_val for val in smoothed]
+    normalized = [max(0, min(1, val)) for val in normalized]  # Clip to 0-1
+    
+    # Simple momentum (difference over 3 periods)
+    current_value = normalized[-1]
+    prev_value = normalized[-2] if len(normalized) > 1 else current_value
+    momentum_prev = normalized[-4] if len(normalized) > 3 else normalized[0]
+    momentum = current_value - momentum_prev
+    
+    signal = generate_composite_signal(current_value, prev_value, momentum)
+    interpretation = get_composite_interpretation(current_value, momentum)
+    
+    return {
+        'current_value': round(current_value, 4),
+        'momentum': round(momentum, 4),
+        'signal': signal,
+        'interpretation': interpretation,
+        'adaptive_weight': round(adaptive_weight, 3),
+        'raw_oi': round(last_oi, 4),
+        'raw_pa': round(pa_values[-1], 4)
+    }
 
 def generate_composite_signal(current_value, prev_value, momentum):
     """Generate trading signals with hysteresis to avoid flip-flops"""
