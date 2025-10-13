@@ -193,33 +193,70 @@ def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_pr
 def get_historical_data(hours_back=24):
     """Retrieve historical ISS data from Google Sheets"""
     if not GOOGLE_SHEETS_ENABLED or not sheets_client:
+        print("📊 Google Sheets not enabled, returning empty data")
         return []
         
     try:
         sheet = sheets_client.open(SPREADSHEET_NAME).sheet1
-        all_records = sheet.get_all_records()
+        print(f"📊 Successfully opened sheet: {SPREADSHEET_NAME}")
+        
+        # Get all values as list of lists to avoid the 'expected_headers' duplicate issue
+        all_values = sheet.get_all_values()
+        print(f"📊 Retrieved {len(all_values)} total rows from sheet")
+        
+        if len(all_values) < 2:  # Need at least header + 1 data row
+            print("📊 No data rows found in Google Sheets")
+            return []
+        
+        # Skip header row and process data rows directly
+        data_rows = all_values[1:]  
+        print(f"📊 Processing {len(data_rows)} data rows")
         
         # Filter for recent data
         current_time = get_ist_time()
         cutoff_time = current_time - timedelta(hours=hours_back)
         
         filtered_data = []
-        for record in all_records:
+        successful_rows = 0
+        
+        for i, row in enumerate(data_rows):
             try:
-                record_time = datetime.strptime(record['Timestamp'], '%Y-%m-%d %H:%M:%S')
+                # Ensure row has minimum required columns
+                if len(row) < 4:  # Need at least: Timestamp, IST_Time, Nifty_ISS, Bank_ISS
+                    continue
+                    
+                # Parse timestamp (first column)
+                timestamp_str = row[0].strip()
+                if not timestamp_str:  # Skip empty rows
+                    continue
+                    
+                # Try to parse the timestamp
+                record_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
                 record_time = record_time.replace(tzinfo=timezone(timedelta(hours=5, minutes=30)))
                 
+                # Only include recent data
                 if record_time >= cutoff_time:
+                    # Extract data with safe defaults
+                    ist_time = row[1] if len(row) > 1 and row[1] else timestamp_str.split(' ')[1][:5]
+                    nifty_iss = float(row[2]) if len(row) > 2 and row[2] else 0.5
+                    bank_iss = float(row[3]) if len(row) > 3 and row[3] else 0.5
+                    nifty_status = row[4] if len(row) > 4 and row[4] else 'Neutral'
+                    bank_status = row[5] if len(row) > 5 and row[5] else 'Neutral'
+                    session = row[6] if len(row) > 6 and row[6] else 'Unknown'
+                    
                     filtered_data.append({
-                        'timestamp': record['IST_Time'],
-                        'time_full': record['Timestamp'],
-                        'nifty_iss': float(record['Nifty_ISS']),
-                        'bank_iss': float(record['Bank_ISS']),
-                        'nifty_status': record['Nifty_Status'],
-                        'bank_status': record['Bank_Status'],
-                        'session': record['Session']
+                        'timestamp': ist_time,
+                        'time_full': timestamp_str,
+                        'nifty_iss': nifty_iss,
+                        'bank_iss': bank_iss,
+                        'nifty_status': nifty_status,
+                        'bank_status': bank_status,
+                        'session': session
                     })
-            except (ValueError, KeyError) as e:
+                    successful_rows += 1
+                    
+            except (ValueError, IndexError) as e:
+                print(f"⚠️ Skipping row {i+2} due to parsing error: {e}")
                 continue
                 
         print(f"📈 Retrieved {len(filtered_data)} historical data points")
