@@ -252,6 +252,30 @@ def get_historical_data(hours_back=24):
                     bank_status = row[5] if len(row) > 5 and row[5] else 'Neutral'
                     session = row[6] if len(row) > 6 and row[6] else 'Unknown'
                     
+                    # Read price action data (columns 7-10)
+                    nifty_price_action = None
+                    bank_price_action = None
+                    nifty_pa_zone = 'Neutral'
+                    bank_pa_zone = 'Neutral'
+                    
+                    if len(row) > 7 and row[7]:
+                        try:
+                            nifty_price_action = float(row[7])
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    if len(row) > 8 and row[8]:
+                        try:
+                            bank_price_action = float(row[8])
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    if len(row) > 9 and row[9]:
+                        nifty_pa_zone = row[9]
+                    
+                    if len(row) > 10 and row[10]:
+                        bank_pa_zone = row[10]
+                    
                     filtered_data.append({
                         'timestamp': ist_time,
                         'time_full': timestamp_str,
@@ -259,7 +283,11 @@ def get_historical_data(hours_back=24):
                         'bank_iss': bank_iss,
                         'nifty_status': nifty_status,
                         'bank_status': bank_status,
-                        'session': session
+                        'session': session,
+                        'nifty_price_action': nifty_price_action,
+                        'bank_price_action': bank_price_action,
+                        'nifty_pa_zone': nifty_pa_zone,
+                        'bank_pa_zone': bank_pa_zone
                     })
                     successful_rows += 1
                     
@@ -1418,7 +1446,11 @@ def get_chart_data():
                     'nifty_meter': point['nifty_iss'],
                     'bank_meter': point['bank_iss'],
                     'nifty_impact': {'status': point['nifty_status']},
-                    'bank_impact': {'status': point['bank_status']}
+                    'bank_impact': {'status': point['bank_status']},
+                    'nifty_price_action': point.get('nifty_price_action'),
+                    'bank_price_action': point.get('bank_price_action'),
+                    'nifty_pa_zone': point.get('nifty_pa_zone', 'Neutral'),
+                    'bank_pa_zone': point.get('bank_pa_zone', 'Neutral')
                 }
                 chart_history.append(chart_point)
         else:
