@@ -21,23 +21,36 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 GOOGLE_SHEETS_ENABLED = True
 SPREADSHEET_NAME = "Vinod-Market-Data"  # Name of your Google Sheet
 try:
-    # For production: Use environment variables or Render secrets
-    GOOGLE_CREDENTIALS = os.getenv('GOOGLE_CREDENTIALS')
+    # Check for multiple possible environment variable names
+    GOOGLE_CREDENTIALS = os.getenv('GOOGLE_CREDENTIALS') or os.getenv('GOOGLE_CREDS') or os.getenv('GOOGLE_SERVICE_ACCOUNT')
+    
+    print(f"🔍 Debug: Checking for Google credentials...")
+    print(f"🔍 GOOGLE_CREDENTIALS env var: {'Found' if os.getenv('GOOGLE_CREDENTIALS') else 'Not found'}")
+    print(f"🔍 GOOGLE_CREDS env var: {'Found' if os.getenv('GOOGLE_CREDS') else 'Not found'}")
+    print(f"🔍 GOOGLE_SERVICE_ACCOUNT env var: {'Found' if os.getenv('GOOGLE_SERVICE_ACCOUNT') else 'Not found'}")
+    print(f"🔍 credentials.json file: {'Found' if os.path.exists('credentials.json') else 'Not found'}")
+    
     if GOOGLE_CREDENTIALS:
         # Parse JSON from environment variable
         import tempfile
         import json
         
-        # Create temporary credentials file
-        creds_dict = json.loads(GOOGLE_CREDENTIALS)
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump(creds_dict, f)
-            GOOGLE_CREDS_FILE = f.name
+        try:
+            # Create temporary credentials file
+            creds_dict = json.loads(GOOGLE_CREDENTIALS)
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                json.dump(creds_dict, f)
+                GOOGLE_CREDS_FILE = f.name
+            print("✅ Using Google Sheets credentials from environment variables")
+        except json.JSONDecodeError as e:
+            print(f"❌ Failed to parse Google credentials JSON: {e}")
+            GOOGLE_SHEETS_ENABLED = False
     else:
         # For local development: Use credentials.json file
         GOOGLE_CREDS_FILE = "credentials.json"
         if not os.path.exists(GOOGLE_CREDS_FILE):
-            print("⚠️ Google Sheets disabled: credentials.json not found")
+            print("⚠️ Google Sheets disabled: No credentials.json file and no Google credentials environment variable found")
+            print("💡 Expected environment variables: GOOGLE_CREDENTIALS, GOOGLE_CREDS, or GOOGLE_SERVICE_ACCOUNT")
             GOOGLE_SHEETS_ENABLED = False
             
     # Initialize Google Sheets client
@@ -1349,26 +1362,8 @@ def get_chart_data():
                 }
                 chart_history.append(chart_point)
         else:
-            # Fallback to in-memory data if Google Sheets not available
-            chart_history = cached_data['chart_data']['nifty_futures_history']
-            
-            # Add current point to in-memory cache
-            if nifty_futures and bank_futures:
-                chart_point = {
-                    'timestamp': timestamp,
-                    'time_full': current_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'nifty_meter': round(nifty_iss, 3),
-                    'bank_meter': round(bank_iss, 3),
-                    'nifty_impact': nifty_impact,
-                    'bank_impact': bank_impact
-                }
-                
-                chart_history.append(chart_point)
-                if len(chart_history) > 100:
-                    chart_history.pop(0)
-                
-                cached_data['chart_data']['nifty_futures_history'] = chart_history
-                cached_data['chart_data']['bank_futures_history'] = chart_history
+            # No Google Sheets data available, return empty
+            chart_history = []
         
         return jsonify({
             'status': 'success',
