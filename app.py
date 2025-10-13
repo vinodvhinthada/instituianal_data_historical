@@ -151,14 +151,15 @@ def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_pr
             nifty_price_action = calculate_index_price_action(nifty_futures_data, NIFTY_50_WEIGHTS)
             bank_price_action = calculate_index_price_action(bank_futures_data, BANK_NIFTY_WEIGHTS)
         
-        # Skip saving if price action calculations failed
+        # Handle None price action values
         if nifty_price_action is None or bank_price_action is None:
-            print("⚠️ Skipping historical data save - price action calculations returned None")
-            return False
-        
-        # Get price action zones
-        nifty_pa_zone = get_price_action_zone(nifty_price_action)['zone']
-        bank_pa_zone = get_price_action_zone(bank_price_action)['zone']
+            print("⚠️ Saving without price action data - calculations returned None")
+            nifty_pa_zone = 'Neutral'
+            bank_pa_zone = 'Neutral'
+        else:
+            # Get price action zones for valid data
+            nifty_pa_zone = get_price_action_zone(nifty_price_action)['zone']
+            bank_pa_zone = get_price_action_zone(bank_price_action)['zone']
         
         # Prepare data
         current_time = get_ist_time()
@@ -180,11 +181,14 @@ def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_pr
         nifty_status = get_meter_status(nifty_iss)['status']
         bank_status = get_meter_status(bank_iss)['status']
         
-        # Append row with price action data
+        # Append row with price action data (handle None values)
+        price_action_nifty = round(nifty_price_action, 4) if nifty_price_action is not None else ''
+        price_action_bank = round(bank_price_action, 4) if bank_price_action is not None else ''
+        
         sheet.append_row([
             timestamp, ist_time, round(nifty_iss, 4), round(bank_iss, 4),
             nifty_status, bank_status, session,
-            round(nifty_price_action, 4), round(bank_price_action, 4),
+            price_action_nifty, price_action_bank,
             nifty_pa_zone, bank_pa_zone
         ])
         
@@ -221,6 +225,9 @@ def get_historical_data(hours_back=24):
         current_time = get_ist_time()
         cutoff_time = current_time - timedelta(hours=hours_back)
         
+        print(f"🕐 Current IST time: {current_time}")
+        print(f"🕐 Cutoff time (last {hours_back}h): {cutoff_time}")
+        
         filtered_data = []
         successful_rows = 0
         
@@ -238,6 +245,10 @@ def get_historical_data(hours_back=24):
                 # Try to parse the timestamp
                 record_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
                 record_time = record_time.replace(tzinfo=timezone(timedelta(hours=5, minutes=30)))
+                
+                # Debug: Show first few timestamp comparisons
+                if i < 3:
+                    print(f"🕐 Row {i+1}: {timestamp_str} -> {record_time} >= {cutoff_time}? {record_time >= cutoff_time}")
                 
                 # Only include recent data
                 if record_time >= cutoff_time:
@@ -295,7 +306,15 @@ def get_historical_data(hours_back=24):
                 print(f"⚠️ Skipping row {i+2} due to parsing error: {e}")
                 continue
                 
-        print(f"📈 Retrieved {len(filtered_data)} historical data points")
+        print(f"📈 Retrieved {len(filtered_data)} historical data points out of {len(data_rows)} total rows")
+        print(f"📈 Successful rows processed: {successful_rows}")
+        
+        # Debug: Show latest few data points
+        if filtered_data:
+            latest_points = filtered_data[-3:]
+            for point in latest_points:
+                print(f"📊 Latest: {point['time_full']} | PA: N={point.get('nifty_price_action')}, B={point.get('bank_price_action')}")
+        
         return filtered_data[-100:]  # Return last 100 points
         
     except Exception as e:
@@ -1341,19 +1360,35 @@ def refresh_data():
         nifty_futures_data = cached_data.get('nifty_futures', []) or []
         bank_futures_data = cached_data.get('bank_futures', []) or []
         
+        print(f"🔍 Futures data counts: NIFTY={len(nifty_futures_data)}, Bank={len(bank_futures_data)}")
+        
+        # Debug: Check if futures data has required fields
+        if nifty_futures_data:
+            sample_nifty = nifty_futures_data[0]
+            print(f"🔍 Sample NIFTY futures data: {sample_nifty.get('symbol', 'N/A')} - LTP:{sample_nifty.get('ltp', 'N/A')}, High:{sample_nifty.get('high', 'N/A')}, Low:{sample_nifty.get('low', 'N/A')}")
+        
+        if bank_futures_data:
+            sample_bank = bank_futures_data[0]
+            print(f"🔍 Sample Bank futures data: {sample_bank.get('symbol', 'N/A')} - LTP:{sample_bank.get('ltp', 'N/A')}, High:{sample_bank.get('high', 'N/A')}, Low:{sample_bank.get('low', 'N/A')}")
+        
         nifty_price_action = calculate_index_price_action(nifty_futures_data, NIFTY_50_WEIGHTS)
         bank_price_action = calculate_index_price_action(bank_futures_data, BANK_NIFTY_WEIGHTS)
         
-        print(f"📊 Calculated price actions: NIFTY={nifty_price_action}, Bank={bank_price_action}")
+        # Fallback: If futures data fails, try using regular stock data
+        if nifty_price_action is None and cached_data.get('nifty_50'):
+            print("⚠️ NIFTY futures price action failed, trying with stock data...")
+            nifty_price_action = calculate_index_price_action(cached_data['nifty_50'], NIFTY_50_WEIGHTS)
+            
+        if bank_price_action is None and cached_data.get('bank_nifty'):
+            print("⚠️ Bank futures price action failed, trying with stock data...")
+            bank_price_action = calculate_index_price_action(cached_data['bank_nifty'], BANK_NIFTY_WEIGHTS)
         
-        # Only save if we have valid price action calculations
-        if nifty_price_action is not None and bank_price_action is not None:
-            # Save to Google Sheets for historical data (including price action)
-            append_historical_data(nifty_iss, bank_iss, nifty_price_action, bank_price_action)
-        else:
-            print("⚠️ Skipping historical data save - invalid price action calculations")
-            # Save ISS data only
-            append_historical_data(nifty_iss, bank_iss, None, None)
+        print(f"📊 Final price actions: NIFTY={nifty_price_action}, Bank={bank_price_action}")
+        
+        # Save to Google Sheets for historical data
+        # Always save ISS data, include price action when available
+        success = append_historical_data(nifty_iss, bank_iss, nifty_price_action, bank_price_action)
+        print(f"💾 Historical data save: {'Success' if success else 'Failed'}")
         
         print("✅ Data refresh completed successfully!")
         
@@ -1557,36 +1592,56 @@ def get_price_action():
 def get_price_action_history():
     """Get historical price action chart data from Google Sheets"""
     try:
-        # Get historical data from Google Sheets
-        historical_data = get_historical_data(hours_back=24)
+        # Get historical data from Google Sheets with extended time window
+        historical_data = get_historical_data(hours_back=48)
         
         if historical_data:
             # Extract price action data for charts
             price_history = []
+            skipped_count = 0
+            
+            print(f"🔍 Processing {len(historical_data)} historical data points for price action charts")
+            
             for point in historical_data:
                 try:
-                    # Skip rows with missing critical price action data
-                    if not point.get('nifty_price_action') or not point.get('bank_price_action'):
+                    # Check price action data with more detailed logging
+                    nifty_pa = point.get('nifty_price_action')
+                    bank_pa = point.get('bank_price_action')
+                    
+                    # More lenient check - allow if at least one has valid data
+                    if (nifty_pa is None or nifty_pa == '') and (bank_pa is None or bank_pa == ''):
+                        skipped_count += 1
                         continue
+                    
+                    # Handle potentially missing values more gracefully
+                    nifty_pa_value = float(nifty_pa) if nifty_pa not in (None, '') else None
+                    bank_pa_value = float(bank_pa) if bank_pa not in (None, '') else None
                     
                     chart_point = {
                         'timestamp': point['timestamp'],
                         'time_full': point['time_full'],
-                        'nifty_price_action': float(point['nifty_price_action']),
-                        'bank_price_action': float(point['bank_price_action']),
+                        'nifty_price_action': nifty_pa_value,
+                        'bank_price_action': bank_pa_value,
                         'nifty_pa_zone': point.get('nifty_pa_zone', 'Neutral'),
                         'bank_pa_zone': point.get('bank_pa_zone', 'Neutral')
                     }
                     price_history.append(chart_point)
                 except (KeyError, ValueError, TypeError) as e:
                     print(f"⚠️ Skipping invalid price action data point: {e}")
+                    skipped_count += 1
                     continue
+            
+            print(f"📊 Price action history: {len(price_history)} valid points, {skipped_count} skipped")
+            if price_history:
+                latest = price_history[-1]
+                print(f"📊 Latest price action: {latest['time_full']} | N={latest['nifty_price_action']}, B={latest['bank_price_action']}")
                     
             return jsonify({
                 'status': 'success',
                 'price_action_history': price_history,
                 'data_source': 'google_sheets',
                 'data_points': len(price_history),
+                'skipped_points': skipped_count,
                 'last_update': cached_data['last_update'].strftime('%Y-%m-%d %H:%M:%S IST') if cached_data['last_update'] else None
             })
         else:
