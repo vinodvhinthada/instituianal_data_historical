@@ -2156,31 +2156,26 @@ def get_composite_meter():
         # Create chart data, skip rows with missing values, and filter for market hours (09:15 to 15:30 IST)
         from datetime import datetime, time
         chart_data = []
-        for point in historical_data[-24:]:  # Last 24 points (2 hours)
+        for point in historical_data:
             point_nifty_oi = point.get('nifty_iss')
             point_bank_oi = point.get('bank_iss')
             point_nifty_pa = point.get('nifty_price_action')
             point_bank_pa = point.get('bank_price_action')
-            if None in (point_nifty_oi, point_bank_oi, point_nifty_pa, point_bank_pa):
-                print(f"⚠️ Skipping chart row with missing values: {point}")
+            ts = point.get('timestamp')
+            # Strictly require all values and valid timestamp
+            if None in (point_nifty_oi, point_bank_oi, point_nifty_pa, point_bank_pa, ts):
                 continue
-            # Parse timestamp and filter for market hours
+            market_open = time(9, 15)
+            market_close = time(15, 30)
+            dt_time = None
             try:
-                ts = point.get('timestamp')
-                market_open = time(9, 15)
-                market_close = time(15, 30)
                 if ':' in ts and len(ts) == 5:  # Format HH:MM
                     dt_time = datetime.strptime(ts, "%H:%M").time()
                 elif ts and len(ts) >= 16:  # Format with date
                     dt_time = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").time()
-                else:
-                    print(f"⚠️ Unrecognized timestamp format: {ts}")
-                    continue
-                if not (market_open <= dt_time <= market_close):
-                    print(f"⏳ Skipping non-market hour row: {ts}")
-                    continue
-            except Exception as e:
-                print(f"⚠️ Error parsing timestamp for market hours: {ts}, {e}")
+            except Exception:
+                continue
+            if dt_time is None or not (market_open <= dt_time <= market_close):
                 continue
             point_nifty_oi = float(point_nifty_oi)
             point_bank_oi = float(point_bank_oi)
@@ -2190,7 +2185,7 @@ def get_composite_meter():
             bank_comp = (point_bank_oi + point_bank_pa) / 2
             chart_data.append({
                 'timestamp': point['timestamp'],
-                'time_full': point['time_full'],
+                'time_full': point.get('time_full', ''),
                 'nifty_composite': round(nifty_comp, 4),
                 'bank_composite': round(bank_comp, 4),
                 'nifty_oi': round(point_nifty_oi, 4),
@@ -2198,6 +2193,8 @@ def get_composite_meter():
                 'bank_oi': round(point_bank_oi, 4),
                 'bank_pa': round(point_bank_pa, 4)
             })
+        # Only keep the last 24 market-hour points for charting
+        chart_data = chart_data[-24:]
         
         return jsonify({
             'status': 'success',
