@@ -2153,7 +2153,8 @@ def get_composite_meter():
         nifty_signal = generate_simple_signal(nifty_composite, nifty_momentum)
         bank_signal = generate_simple_signal(bank_composite, bank_momentum)
         
-        # Create chart data, skip rows with missing values
+        # Create chart data, skip rows with missing values, and filter for market hours (09:15 to 15:30 IST)
+        from datetime import datetime, time
         chart_data = []
         for point in historical_data[-24:]:  # Last 24 points (2 hours)
             point_nifty_oi = point.get('nifty_iss')
@@ -2162,6 +2163,18 @@ def get_composite_meter():
             point_bank_pa = point.get('bank_price_action')
             if None in (point_nifty_oi, point_bank_oi, point_nifty_pa, point_bank_pa):
                 print(f"⚠️ Skipping chart row with missing values: {point}")
+                continue
+            # Parse timestamp and filter for market hours
+            try:
+                ts = point.get('timestamp')
+                dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                market_open = time(9, 15)
+                market_close = time(15, 30)
+                if not (market_open <= dt.time() <= market_close):
+                    print(f"⏳ Skipping non-market hour row: {ts}")
+                    continue
+            except Exception as e:
+                print(f"⚠️ Error parsing timestamp for market hours: {point.get('timestamp')}, {e}")
                 continue
             point_nifty_oi = float(point_nifty_oi)
             point_bank_oi = float(point_bank_oi)
