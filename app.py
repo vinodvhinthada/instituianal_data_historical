@@ -2096,37 +2096,36 @@ def get_composite_meter():
         print(f"🔍 Creating simple composite meter from {len(historical_data)} data points")
         
         # Get latest values with safe null handling
+        latest = historical_data[-1]
+        nifty_oi = latest.get('nifty_iss')
+        bank_oi = latest.get('bank_iss')
+        nifty_pa = latest.get('nifty_price_action')
+        bank_pa = latest.get('bank_price_action')
 
-            latest = historical_data[-1]
-            nifty_oi = latest.get('nifty_iss')
-            bank_oi = latest.get('bank_iss')
-            nifty_pa = latest.get('nifty_price_action')
-            bank_pa = latest.get('bank_price_action')
+        # If any required value is missing, return error
+        if None in (nifty_oi, bank_oi, nifty_pa, bank_pa):
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing required data for composite meter calculation',
+                'missing_fields': {
+                    'nifty_oi': nifty_oi,
+                    'bank_oi': bank_oi,
+                    'nifty_pa': nifty_pa,
+                    'bank_pa': bank_pa
+                }
+            }), 400
 
-            # If any required value is missing, return error
-            if None in (nifty_oi, bank_oi, nifty_pa, bank_pa):
-                return jsonify({
-                    'status': 'error',
-                    'message': 'Missing required data for composite meter calculation',
-                    'missing_fields': {
-                        'nifty_oi': nifty_oi,
-                        'bank_oi': bank_oi,
-                        'nifty_pa': nifty_pa,
-                        'bank_pa': bank_pa
-                    }
-                }), 400
+        # Convert to float
+        nifty_oi = float(nifty_oi)
+        bank_oi = float(bank_oi)
+        nifty_pa = float(nifty_pa)
+        bank_pa = float(bank_pa)
 
-            # Convert to float
-            nifty_oi = float(nifty_oi)
-            bank_oi = float(bank_oi)
-            nifty_pa = float(nifty_pa)
-            bank_pa = float(bank_pa)
+        print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
 
-            print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
-
-            # Simple composite calculation
-            nifty_composite = (nifty_oi + nifty_pa) / 2
-            bank_composite = (bank_oi + bank_pa) / 2
+        # Simple composite calculation
+        nifty_composite = (nifty_oi + nifty_pa) / 2
+        bank_composite = (bank_oi + bank_pa) / 2
         
 
         # Simple momentum (compare with previous if available, no defaults)
