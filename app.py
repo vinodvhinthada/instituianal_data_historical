@@ -2,16 +2,20 @@ import os
 import requests
 # Telegram alert function
 def send_telegram_alert(message):
-    telegram_token = '8258198932:AAGaEdur2Z5Lo9gCCnRJmmF5Ii6TZXMtL08'
-    chat_id = 't.me/Vinod_chinthada_bot'
+    telegram_token = os.environ.get('TELEGRAM_API_KEY')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID', 't.me/Vinod_chinthada_bot')
+    if not telegram_token:
+        print('❌ TELEGRAM_API_KEY not set in environment variables')
+        return False
     url = f'https://api.telegram.org/bot{telegram_token}/sendMessage'
     payload = {'chat_id': chat_id, 'text': message, 'parse_mode': 'Markdown'}
+    masked_token = telegram_token[:8] + '...' + telegram_token[-5:] if telegram_token else 'None'
     try:
         resp = requests.post(url, data=payload)
-        print(f'✅ Telegram alert sent: {resp.text}')
+        print(f'✅ Telegram alert sent using token: {masked_token}. Response: {resp.text}')
         return resp.status_code == 200
     except Exception as e:
-        print(f'❌ Error sending Telegram alert: {e}')
+        print(f'❌ Error sending Telegram alert with token {masked_token}: {e}')
         return False
 """
 Live Market Data Web Application
