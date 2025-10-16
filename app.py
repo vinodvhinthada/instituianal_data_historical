@@ -117,8 +117,7 @@ NIFTY_50_WEIGHTS = {
     "M&M": 1.0,           # Mahindra & Mahindra
     "ADANIPORTS": 0.9,    # Adani Ports
     "ONGC": 0.8,          # Oil & Natural Gas Corporation
-    "COALINDIA": 0.7,     # Coal India
-    "TATASTEEL": 0.6,     # Tata Steel
+    "COALINDIA": 0.7,     # Tata Steel
     "BAJAJFINSV": 0.5,    # Bajaj Finserv
     "DRREDDY": 0.4,       # Dr. Reddy's Laboratories
     "HINDALCO": 0.3,      # Hindalco Industries
@@ -2135,94 +2134,6 @@ def get_composite_meter():
         nifty_pa = float(nifty_pa)
         bank_pa = float(bank_pa)
         print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
-
-        # Simple composite calculation
-        nifty_composite = (nifty_oi + nifty_pa) / 2
-        bank_composite = (bank_oi + bank_pa) / 2
-        # ...existing code for momentum, signals, chart data, and response...
-        # Return the full composite meter response as before
-        # ...existing code...
-    except Exception as e:
-        print(f"💥 Error in get_composite_meter: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-@app.route('/send-telegram-alert', methods=['POST'])
-def send_enhanced_meter_telegram():
-    # Get latest composite meter data
-    try:
-        result = get_composite_meter().get_json()
-        if result.get('status') != 'success':
-            return jsonify({'status': 'error', 'message': 'Composite meter not available'}), 400
-        # Prepare alert message
-        nifty_val = result['nifty']['current_value']
-        bank_val = result['bank_nifty']['current_value']
-        nifty_oi = result['nifty']['raw_oi']
-        bank_oi = result['bank_nifty']['raw_oi']
-        nifty_pa = result['nifty']['raw_pa']
-        bank_pa = result['bank_nifty']['raw_pa']
-        nifty_oi_dir = 'UP' if nifty_oi > 0.5 else 'DOWN'
-        bank_oi_dir = 'UP' if bank_oi > 0.5 else 'DOWN'
-        nifty_pa_dir = 'UP' if nifty_pa > 0.5 else 'DOWN'
-        bank_pa_dir = 'UP' if bank_pa > 0.5 else 'DOWN'
-        msg = (
-            f"*Enhanced Meter Alert*\n"
-            f"NIFTY Composite: `{nifty_val}`\n"
-            f"Bank NIFTY Composite: `{bank_val}`\n"
-            f"NIFTY OI: `{nifty_oi}` ({nifty_oi_dir})\n"
-            f"Bank NIFTY OI: `{bank_oi}` ({bank_oi_dir})\n"
-            f"NIFTY Price: `{nifty_pa}` ({nifty_pa_dir})\n"
-            f"Bank NIFTY Price: `{bank_pa}` ({bank_pa_dir})\n"
-        )
-        ok = send_telegram_alert(msg)
-        return jsonify({'status': 'success' if ok else 'error', 'message': msg})
-    except Exception as e:
-        print(f'❌ Error in Telegram alert endpoint: {e}')
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-    """Get enhanced composite smoothed index meter with noise reduction and adaptive signals"""
-    print("🔄 Composite meter API endpoint called")
-    try:
-        # Get historical data from Google Sheets with extended window
-        historical_data = get_historical_data(hours_back=6)  # 6 hours for better smoothing
-        
-        if not historical_data or len(historical_data) < 1:
-            return jsonify({
-                'status': 'error',
-                'message': 'No historical data available for composite meter calculation',
-                'data_points_available': len(historical_data) if historical_data else 0,
-                'minimum_required': 1
-            }), 400
-        
-        # Simple composite calculation (fallback)
-        print(f"🔍 Creating simple composite meter from {len(historical_data)} data points")
-        
-        # Get latest values with safe null handling
-        latest = historical_data[-1]
-        nifty_oi = latest.get('nifty_iss')
-        bank_oi = latest.get('bank_iss')
-        nifty_pa = latest.get('nifty_price_action')
-        bank_pa = latest.get('bank_price_action')
-
-        # If any required value is missing, return error
-        if None in (nifty_oi, bank_oi, nifty_pa, bank_pa):
-            return jsonify({
-                'status': 'error',
-                'message': 'Missing required data for composite meter calculation',
-                'missing_fields': {
-                    'nifty_oi': nifty_oi,
-                    'bank_oi': bank_oi,
-                    'nifty_pa': nifty_pa,
-                    'bank_pa': bank_pa
-                }
-            }), 400
-
-        # Convert to float
-        nifty_oi = float(nifty_oi)
-        bank_oi = float(bank_oi)
-        nifty_pa = float(nifty_pa)
-        bank_pa = float(bank_pa)
-
-        print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
-
 
         # Simple composite calculation
         nifty_composite = (nifty_oi + nifty_pa) / 2
