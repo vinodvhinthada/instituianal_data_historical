@@ -2167,14 +2167,20 @@ def get_composite_meter():
             # Parse timestamp and filter for market hours
             try:
                 ts = point.get('timestamp')
-                dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
                 market_open = time(9, 15)
                 market_close = time(15, 30)
-                if not (market_open <= dt.time() <= market_close):
+                if ':' in ts and len(ts) == 5:  # Format HH:MM
+                    dt_time = datetime.strptime(ts, "%H:%M").time()
+                elif ts and len(ts) >= 16:  # Format with date
+                    dt_time = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").time()
+                else:
+                    print(f"⚠️ Unrecognized timestamp format: {ts}")
+                    continue
+                if not (market_open <= dt_time <= market_close):
                     print(f"⏳ Skipping non-market hour row: {ts}")
                     continue
             except Exception as e:
-                print(f"⚠️ Error parsing timestamp for market hours: {point.get('timestamp')}, {e}")
+                print(f"⚠️ Error parsing timestamp for market hours: {ts}, {e}")
                 continue
             point_nifty_oi = float(point_nifty_oi)
             point_bank_oi = float(point_bank_oi)
