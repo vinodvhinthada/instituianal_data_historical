@@ -2096,49 +2096,80 @@ def get_composite_meter():
         print(f"🔍 Creating simple composite meter from {len(historical_data)} data points")
         
         # Get latest values with safe null handling
-        latest = historical_data[-1]
-        nifty_oi = safe_float_conversion(latest.get('nifty_iss'))
-        bank_oi = safe_float_conversion(latest.get('bank_iss'))
-        nifty_pa = safe_float_conversion(latest.get('nifty_price_action'))
-        bank_pa = safe_float_conversion(latest.get('bank_price_action'))
+
+            latest = historical_data[-1]
+            nifty_oi = latest.get('nifty_iss')
+            bank_oi = latest.get('bank_iss')
+            nifty_pa = latest.get('nifty_price_action')
+            bank_pa = latest.get('bank_price_action')
+
+            # If any required value is missing, return error
+            if None in (nifty_oi, bank_oi, nifty_pa, bank_pa):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Missing required data for composite meter calculation',
+                    'missing_fields': {
+                        'nifty_oi': nifty_oi,
+                        'bank_oi': bank_oi,
+                        'nifty_pa': nifty_pa,
+                        'bank_pa': bank_pa
+                    }
+                }), 400
+
+            # Convert to float
+            nifty_oi = float(nifty_oi)
+            bank_oi = float(bank_oi)
+            nifty_pa = float(nifty_pa)
+            bank_pa = float(bank_pa)
+
+            print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
+
+            # Simple composite calculation
+            nifty_composite = (nifty_oi + nifty_pa) / 2
+            bank_composite = (bank_oi + bank_pa) / 2
         
-        print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
-        
-        # Simple composite calculation
-        nifty_composite = (nifty_oi + nifty_pa) / 2
-        bank_composite = (bank_oi + bank_pa) / 2
-        
-        # Simple momentum (compare with previous if available)
-        nifty_momentum = 0
-        bank_momentum = 0
+
+        # Simple momentum (compare with previous if available, no defaults)
+        nifty_momentum = None
+        bank_momentum = None
         if len(historical_data) > 1:
             prev = historical_data[-2]
-            prev_nifty_oi = safe_float_conversion(prev.get('nifty_iss'))
-            prev_bank_oi = safe_float_conversion(prev.get('bank_iss'))
-            prev_nifty_pa = safe_float_conversion(prev.get('nifty_price_action'))
-            prev_bank_pa = safe_float_conversion(prev.get('bank_price_action'))
-            
-            prev_nifty = (prev_nifty_oi + prev_nifty_pa) / 2
-            prev_bank = (prev_bank_oi + prev_bank_pa) / 2
-            nifty_momentum = nifty_composite - prev_nifty
-            bank_momentum = bank_composite - prev_bank
+            prev_nifty_oi = prev.get('nifty_iss')
+            prev_bank_oi = prev.get('bank_iss')
+            prev_nifty_pa = prev.get('nifty_price_action')
+            prev_bank_pa = prev.get('bank_price_action')
+            if None not in (prev_nifty_oi, prev_bank_oi, prev_nifty_pa, prev_bank_pa):
+                prev_nifty_oi = float(prev_nifty_oi)
+                prev_bank_oi = float(prev_bank_oi)
+                prev_nifty_pa = float(prev_nifty_pa)
+                prev_bank_pa = float(prev_bank_pa)
+                prev_nifty = (prev_nifty_oi + prev_nifty_pa) / 2
+                prev_bank = (prev_bank_oi + prev_bank_pa) / 2
+                nifty_momentum = nifty_composite - prev_nifty
+                bank_momentum = bank_composite - prev_bank
+            else:
+                print(f"⚠️ Missing previous values for momentum calculation: {prev}")
         
         # Generate signals
         nifty_signal = generate_simple_signal(nifty_composite, nifty_momentum)
         bank_signal = generate_simple_signal(bank_composite, bank_momentum)
         
-        # Create chart data
+        # Create chart data, skip rows with missing values
         chart_data = []
         for point in historical_data[-24:]:  # Last 24 points (2 hours)
-            # Safe null handling for chart data
-            point_nifty_oi = safe_float_conversion(point.get('nifty_iss'))
-            point_bank_oi = safe_float_conversion(point.get('bank_iss'))
-            point_nifty_pa = safe_float_conversion(point.get('nifty_price_action'))
-            point_bank_pa = safe_float_conversion(point.get('bank_price_action'))
-            
+            point_nifty_oi = point.get('nifty_iss')
+            point_bank_oi = point.get('bank_iss')
+            point_nifty_pa = point.get('nifty_price_action')
+            point_bank_pa = point.get('bank_price_action')
+            if None in (point_nifty_oi, point_bank_oi, point_nifty_pa, point_bank_pa):
+                print(f"⚠️ Skipping chart row with missing values: {point}")
+                continue
+            point_nifty_oi = float(point_nifty_oi)
+            point_bank_oi = float(point_bank_oi)
+            point_nifty_pa = float(point_nifty_pa)
+            point_bank_pa = float(point_bank_pa)
             nifty_comp = (point_nifty_oi + point_nifty_pa) / 2
             bank_comp = (point_bank_oi + point_bank_pa) / 2
-            
             chart_data.append({
                 'timestamp': point['timestamp'],
                 'time_full': point['time_full'],
