@@ -2066,6 +2066,16 @@ def get_price_action_history():
             'message': f'Error getting price action history: {str(e)}'
         }), 500
 
+def safe_float_conversion(value, default=0.5):
+    """Safely convert a value to float with a default fallback"""
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (ValueError, TypeError):
+        print(f"⚠️ Warning: Could not convert {value} to float, using default {default}")
+        return default
+
 @app.route('/api/composite-meter')
 def get_composite_meter():
     """Get enhanced composite smoothed index meter with noise reduction and adaptive signals"""
@@ -2085,12 +2095,14 @@ def get_composite_meter():
         # Simple composite calculation (fallback)
         print(f"🔍 Creating simple composite meter from {len(historical_data)} data points")
         
-        # Get latest values
+        # Get latest values with safe null handling
         latest = historical_data[-1]
-        nifty_oi = latest.get('nifty_iss', 0.5)
-        bank_oi = latest.get('bank_iss', 0.5)
-        nifty_pa = latest.get('nifty_price_action', 0.5)
-        bank_pa = latest.get('bank_price_action', 0.5)
+        nifty_oi = safe_float_conversion(latest.get('nifty_iss'))
+        bank_oi = safe_float_conversion(latest.get('bank_iss'))
+        nifty_pa = safe_float_conversion(latest.get('nifty_price_action'))
+        bank_pa = safe_float_conversion(latest.get('bank_price_action'))
+        
+        print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
         
         # Simple composite calculation
         nifty_composite = (nifty_oi + nifty_pa) / 2
@@ -2101,8 +2113,13 @@ def get_composite_meter():
         bank_momentum = 0
         if len(historical_data) > 1:
             prev = historical_data[-2]
-            prev_nifty = (prev.get('nifty_iss', 0.5) + prev.get('nifty_price_action', 0.5)) / 2
-            prev_bank = (prev.get('bank_iss', 0.5) + prev.get('bank_price_action', 0.5)) / 2
+            prev_nifty_oi = safe_float_conversion(prev.get('nifty_iss'))
+            prev_bank_oi = safe_float_conversion(prev.get('bank_iss'))
+            prev_nifty_pa = safe_float_conversion(prev.get('nifty_price_action'))
+            prev_bank_pa = safe_float_conversion(prev.get('bank_price_action'))
+            
+            prev_nifty = (prev_nifty_oi + prev_nifty_pa) / 2
+            prev_bank = (prev_bank_oi + prev_bank_pa) / 2
             nifty_momentum = nifty_composite - prev_nifty
             bank_momentum = bank_composite - prev_bank
         
@@ -2113,18 +2130,24 @@ def get_composite_meter():
         # Create chart data
         chart_data = []
         for point in historical_data[-24:]:  # Last 24 points (2 hours)
-            nifty_comp = (point.get('nifty_iss', 0.5) + point.get('nifty_price_action', 0.5)) / 2
-            bank_comp = (point.get('bank_iss', 0.5) + point.get('bank_price_action', 0.5)) / 2
+            # Safe null handling for chart data
+            point_nifty_oi = safe_float_conversion(point.get('nifty_iss'))
+            point_bank_oi = safe_float_conversion(point.get('bank_iss'))
+            point_nifty_pa = safe_float_conversion(point.get('nifty_price_action'))
+            point_bank_pa = safe_float_conversion(point.get('bank_price_action'))
+            
+            nifty_comp = (point_nifty_oi + point_nifty_pa) / 2
+            bank_comp = (point_bank_oi + point_bank_pa) / 2
             
             chart_data.append({
                 'timestamp': point['timestamp'],
                 'time_full': point['time_full'],
                 'nifty_composite': round(nifty_comp, 4),
                 'bank_composite': round(bank_comp, 4),
-                'nifty_oi': round(point.get('nifty_iss', 0.5), 4),
-                'nifty_pa': round(point.get('nifty_price_action', 0.5), 4),
-                'bank_oi': round(point.get('bank_iss', 0.5), 4),
-                'bank_pa': round(point.get('bank_price_action', 0.5), 4)
+                'nifty_oi': round(point_nifty_oi, 4),
+                'nifty_pa': round(point_nifty_pa, 4),
+                'bank_oi': round(point_bank_oi, 4),
+                'bank_pa': round(point_bank_pa, 4)
             })
         
         return jsonify({
