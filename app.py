@@ -2097,6 +2097,8 @@ def safe_float_conversion(value, default=0.5):
 
 @app.route('/api/composite-meter')
 def get_composite_meter():
+    # ...existing code for composite meter endpoint...
+
 @app.route('/send-telegram-alert', methods=['POST'])
 def send_enhanced_meter_telegram():
     # Get latest composite meter data
