@@ -1,3 +1,18 @@
+import os
+import requests
+# Telegram alert function
+def send_telegram_alert(message):
+    telegram_token = '8258198932:AAGaEdur2Z5Lo9gCCnRJmmF5Ii6TZXMtL08'
+    chat_id = 't.me/Vinod_chinthada_bot'
+    url = f'https://api.telegram.org/bot{telegram_token}/sendMessage'
+    payload = {'chat_id': chat_id, 'text': message, 'parse_mode': 'Markdown'}
+    try:
+        resp = requests.post(url, data=payload)
+        print(f'✅ Telegram alert sent: {resp.text}')
+        return resp.status_code == 200
+    except Exception as e:
+        print(f'❌ Error sending Telegram alert: {e}')
+        return False
 """
 Live Market Data Web Application
 Real-time Nifty 50 and Bank Nifty data visualization with futures analysis
@@ -2078,6 +2093,38 @@ def safe_float_conversion(value, default=0.5):
 
 @app.route('/api/composite-meter')
 def get_composite_meter():
+@app.route('/send-telegram-alert', methods=['POST'])
+def send_enhanced_meter_telegram():
+    # Get latest composite meter data
+    try:
+        result = get_composite_meter().get_json()
+        if result.get('status') != 'success':
+            return jsonify({'status': 'error', 'message': 'Composite meter not available'}), 400
+        # Prepare alert message
+        nifty_val = result['nifty']['current_value']
+        bank_val = result['bank_nifty']['current_value']
+        nifty_oi = result['nifty']['raw_oi']
+        bank_oi = result['bank_nifty']['raw_oi']
+        nifty_pa = result['nifty']['raw_pa']
+        bank_pa = result['bank_nifty']['raw_pa']
+        nifty_oi_dir = 'UP' if nifty_oi > 0.5 else 'DOWN'
+        bank_oi_dir = 'UP' if bank_oi > 0.5 else 'DOWN'
+        nifty_pa_dir = 'UP' if nifty_pa > 0.5 else 'DOWN'
+        bank_pa_dir = 'UP' if bank_pa > 0.5 else 'DOWN'
+        msg = (
+            f"*Enhanced Meter Alert*\n"
+            f"NIFTY Composite: `{nifty_val}`\n"
+            f"Bank NIFTY Composite: `{bank_val}`\n"
+            f"NIFTY OI: `{nifty_oi}` ({nifty_oi_dir})\n"
+            f"Bank NIFTY OI: `{bank_oi}` ({bank_oi_dir})\n"
+            f"NIFTY Price: `{nifty_pa}` ({nifty_pa_dir})\n"
+            f"Bank NIFTY Price: `{bank_pa}` ({bank_pa_dir})\n"
+        )
+        ok = send_telegram_alert(msg)
+        return jsonify({'status': 'success' if ok else 'error', 'message': msg})
+    except Exception as e:
+        print(f'❌ Error in Telegram alert endpoint: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
     """Get enhanced composite smoothed index meter with noise reduction and adaptive signals"""
     print("🔄 Composite meter API endpoint called")
     try:
@@ -2123,9 +2170,29 @@ def get_composite_meter():
 
         print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
 
+
         # Simple composite calculation
         nifty_composite = (nifty_oi + nifty_pa) / 2
         bank_composite = (bank_oi + bank_pa) / 2
+
+        # Send Telegram alert automatically
+        try:
+            nifty_oi_dir = 'UP' if nifty_oi > 0.5 else 'DOWN'
+            bank_oi_dir = 'UP' if bank_oi > 0.5 else 'DOWN'
+            nifty_pa_dir = 'UP' if nifty_pa > 0.5 else 'DOWN'
+            bank_pa_dir = 'UP' if bank_pa > 0.5 else 'DOWN'
+            msg = (
+                f"*Enhanced Meter Alert*\n"
+                f"NIFTY Composite: `{nifty_composite}`\n"
+                f"Bank NIFTY Composite: `{bank_composite}`\n"
+                f"NIFTY OI: `{nifty_oi}` ({nifty_oi_dir})\n"
+                f"Bank NIFTY OI: `{bank_oi}` ({bank_oi_dir})\n"
+                f"NIFTY Price: `{nifty_pa}` ({nifty_pa_dir})\n"
+                f"Bank NIFTY Price: `{bank_pa}` ({bank_pa_dir})\n"
+            )
+            send_telegram_alert(msg)
+        except Exception as e:
+            print(f"❌ Error sending auto Telegram alert: {e}")
         
 
         # Simple momentum (compare with previous if available, no defaults)
