@@ -2135,12 +2135,16 @@ def get_composite_meter():
         nifty_pa = float(nifty_pa)
         bank_pa = float(bank_pa)
         print(f"📊 Latest values - NIFTY: OI={nifty_oi}, PA={nifty_pa} | BANK: OI={bank_oi}, PA={bank_pa}")
+
         # Simple composite calculation
         nifty_composite = (nifty_oi + nifty_pa) / 2
         bank_composite = (bank_oi + bank_pa) / 2
         # ...existing code for momentum, signals, chart data, and response...
         # Return the full composite meter response as before
         # ...existing code...
+    except Exception as e:
+        print(f"💥 Error in get_composite_meter: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/send-telegram-alert', methods=['POST'])
 def send_enhanced_meter_telegram():
