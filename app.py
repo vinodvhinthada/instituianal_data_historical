@@ -156,6 +156,17 @@ BANK_NIFTY_WEIGHTS = {
 
 # 📊 Google Sheets Helper Functions
 def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_price_action=None):
+    # Fetch NIFTY and BANKNIFTY futures prices using their tokens
+    nifty_token = "37054"
+    banknifty_token = "37051"
+    nifty_fut_data = fetch_market_data({nifty_token: {"symbol": "NIFTY25NOV25FUT", "name": "NIFTY"}}, "NFO")
+    banknifty_fut_data = fetch_market_data({banknifty_token: {"symbol": "BANKNIFTY25NOV25FUT", "name": "BANKNIFTY"}}, "NFO")
+    nifty_fut_price = None
+    banknifty_fut_price = None
+    if nifty_fut_data and isinstance(nifty_fut_data, list) and len(nifty_fut_data) > 0:
+        nifty_fut_price = nifty_fut_data[0].get('ltp', None)
+    if banknifty_fut_data and isinstance(banknifty_fut_data, list) and len(banknifty_fut_data) > 0:
+        banknifty_fut_price = banknifty_fut_data[0].get('ltp', None)
     """Append current ISS and Price Action data to Google Sheets for historical tracking"""
     if not GOOGLE_SHEETS_ENABLED or not sheets_client:
         return False
@@ -222,7 +233,9 @@ def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_pr
             timestamp, ist_time, round(nifty_iss, 4), round(bank_iss, 4),
             nifty_status, bank_status, session,
             price_action_nifty, price_action_bank,
-            nifty_pa_zone, bank_pa_zone
+            nifty_pa_zone, bank_pa_zone,
+            nifty_fut_price if nifty_fut_price is not None else '',
+            banknifty_fut_price if banknifty_fut_price is not None else ''
         ])
         
         print(f"📊 Historical data saved: {timestamp} | Nifty: {nifty_iss:.3f} | Bank: {bank_iss:.3f}")
