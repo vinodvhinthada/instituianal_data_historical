@@ -89,54 +89,69 @@ except Exception as e:
 # 📊 Index Weights Configuration for Price Action Analysis
 # NIFTY 50 constituent weights (approximate percentages as of 2024)
 NIFTY_50_WEIGHTS = {
-    "RELIANCE": 9.5,      # Reliance Industries
-    "TCS": 7.2,           # Tata Consultancy Services
-    "HDFCBANK": 7.5,      # HDFC Bank
-    "ICICIBANK": 7.0,     # ICICI Bank
-    "HINDUNILVR": 4.8,    # Hindustan Unilever
-    "INFY": 4.5,          # Infosys
-    "LT": 3.8,            # Larsen & Toubro
-    "ITC": 3.5,           # ITC Limited
-    "SBIN": 3.2,          # State Bank of India
-    "BHARTIARTL": 3.0,    # Bharti Airtel
-    "KOTAKBANK": 2.8,     # Kotak Mahindra Bank
-    "ASIANPAINT": 2.5,    # Asian Paints
-    "MARUTI": 2.4,        # Maruti Suzuki
-    "AXISBANK": 2.3,      # Axis Bank
-    "HCLTECH": 2.2,       # HCL Technologies
-    "BAJFINANCE": 2.1,    # Bajaj Finance
-    "WIPRO": 1.9,         # Wipro
-    "NESTLEIND": 1.8,     # Nestle India
-    "ULTRACEMCO": 1.7,    # UltraTech Cement
-    "TATAMOTORS": 1.6,    # Tata Motors
-    "SUNPHARMA": 1.5,     # Sun Pharmaceutical
-    "NTPC": 1.4,          # NTPC
-    "TITAN": 1.3,         # Titan Company
-    "POWERGRID": 1.2,     # Power Grid Corporation
-    "TECHM": 1.1,         # Tech Mahindra
-    "M&M": 1.0,           # Mahindra & Mahindra
-    "ADANIPORTS": 0.9,    # Adani Ports
-    "ONGC": 0.8,          # Oil & Natural Gas Corporation
-    "COALINDIA": 0.7,     # Tata Steel
-    "BAJAJFINSV": 0.5,    # Bajaj Finserv
-    "DRREDDY": 0.4,       # Dr. Reddy's Laboratories
-    "HINDALCO": 0.3,      # Hindalco Industries
-    "EICHERMOT": 0.2,     # Eicher Motors
-    "DIVISLAB": 0.1,      # Divi's Laboratories
+    "BAJAJFINSV": 1.0,
+    "BHARTIARTL": 4.53,
+    "CIPLA": 0.75,
+    "DRREDDY": 0.67,
+    "POWERGRID": 1.15,
+    "ADANIENT": 0.59,
+    "APOLLOHOSP": 0.66,
+    "BAJFINANCE": 2.3,
+    "EICHERMOT": 0.84,
+    "HDFCBANK": 12.91,
+    "HDFCLIFE": 0.71,
+    "KOTAKBANK": 2.71,
+    "LT": 3.84,
+    "MARUTI": 1.82,
+    "MAXHEALTH": 0.7,
+    "AXISBANK": 2.96,
+    "JSWSTEEL": 0.95,
+    "M&M": 2.69,
+    "TATAMOTORS": 1.31,
+    "TRENT": 0.94,
+    "SUNPHARMA": 1.51,
+    "GRASIM": 0.93,
+    "INFY": 4.56,
+    "JIOFIN": 0.87,
+    "NESTLEIND": 0.73,
+    "TATACONSUM": 0.65,
+    "TITAN": 1.25,
+    "WIPRO": 0.6,
+    "ASIANPAINT": 0.93,
+    "BEL": 1.29,
+    "HCLTECH": 1.29,
+    "INDIGO": 1.08,
+    "SBIN": 3.16,
+    "SHRIRAMFIN": 0.79,
+    "TECHM": 0.78,
+    "ITC": 3.41,
+    "HINDUNILVR": 1.98,
+    "RELIANCE": 8.08,
+    "ULTRACEMCO": 1.25,
+    "ONGC": 0.83,
+    "SBILIFE": 0.7,
+    "TCS": 2.6,
+    "ADANIPORTS": 0.92,
+    "COALINDIA": 0.76,
+    "HINDALCO": 0.99,
+    "NTPC": 1.42,
+    "TATASTEEL": 1.25,
 }
 
 # Bank NIFTY constituent weights (approximate percentages as of 2024)
 BANK_NIFTY_WEIGHTS = {
-    "HDFCBANK": 23.5,     # HDFC Bank
-    "ICICIBANK": 22.8,    # ICICI Bank
-    "SBIN": 15.2,         # State Bank of India
-    "KOTAKBANK": 12.4,    # Kotak Mahindra Bank
-    "AXISBANK": 11.8,     # Axis Bank
-    "INDUSINDBK": 4.2,    # IndusInd Bank
-    "FEDERALBNK": 3.1,    # Federal Bank
-    "BANDHANBNK": 2.8,    # Bandhan Bank
-    "AUBANK": 2.2,        # AU Small Finance Bank
-    "IDFCFIRSTB": 2.0,    # IDFC First Bank
+    "AUBANK": 1.11,
+    "CANBK": 1.13,
+    "HDFCBANK": 39.1,
+    "KOTAKBANK": 8.19,
+    "AXISBANK": 8.97,
+    "INDUSINDBK": 1.31,
+    "IDFCFIRSTB": 1.21,
+    "FEDERALBNK": 1.25,
+    "SBIN": 9.56,
+    "PNB": 1.05,
+    "BANKBARODA": 1.29,
+    "ICICIBANK": 25.84,
 }
 
 # 📊 Google Sheets Helper Functions
@@ -656,68 +671,68 @@ BANK_NIFTY_STOCKS = {
 
 # Nifty 50 Futures Token Mapping (October 28, 2025 Expiry) - COMPLETE 47 FUTURES
 NIFTY_50_FUTURES = {
-    "52274": {"symbol": "BEL28OCT25FUT", "name": "BEL", "company": "Bharat Electronics Ltd", "weight": 1.29},
-    "52351": {"symbol": "GRASIM28OCT25FUT", "name": "GRASIM", "company": "Grasim Industries Ltd", "weight": 0.93},
-    "52442": {"symbol": "LT28OCT25FUT", "name": "LT", "company": "Larsen & Toubro Ltd", "weight": 3.84},
-    "52454": {"symbol": "MARUTI28OCT25FUT", "name": "MARUTI", "company": "Maruti Suzuki India Ltd", "weight": 1.82},
-    "52555": {"symbol": "TRENT28OCT25FUT", "name": "TRENT", "company": "Trent Ltd", "weight": 0.94},
-    "52391": {"symbol": "INDIGO28OCT25FUT", "name": "INDIGO", "company": "InterGlobe Aviation Ltd", "weight": 1.08},
-    "52240": {"symbol": "BAJAJFINSV28OCT25FUT", "name": "BAJAJFINSV", "company": "Bajaj Finserv Ltd", "weight": 1.0},
-    "52455": {"symbol": "MAXHEALTH28OCT25FUT", "name": "MAXHEALTH", "company": "Max Healthcare Institute Ltd", "weight": 0.7},
-    "52509": {"symbol": "RELIANCE28OCT25FUT", "name": "RELIANCE", "company": "Reliance Industries Ltd", "weight": 8.08},
-    "52532": {"symbol": "TATAMOTORS28OCT25FUT", "name": "TATAMOTORS", "company": "Tata Motors Ltd", "weight": 1.31},
-    "52558": {"symbol": "ULTRACEMCO28OCT25FUT", "name": "ULTRACEMCO", "company": "UltraTech Cement Ltd", "weight": 1.25},
-    "52422": {"symbol": "JSWSTEEL28OCT25FUT", "name": "JSWSTEEL", "company": "JSW Steel Ltd", "weight": 0.95},
-    "52474": {"symbol": "NTPC28OCT25FUT", "name": "NTPC", "company": "NTPC Ltd", "weight": 1.42},
-    "52504": {"symbol": "POWERGRID28OCT25FUT", "name": "POWERGRID", "company": "Power Grid Corporation of India Ltd", "weight": 1.15},
-    "52521": {"symbol": "SUNPHARMA28OCT25FUT", "name": "SUNPHARMA", "company": "Sun Pharmaceutical Industries Ltd", "weight": 1.51},
-    "52539": {"symbol": "TCS28OCT25FUT", "name": "TCS", "company": "Tata Consultancy Services Ltd", "weight": 2.6},
-    "52370": {"symbol": "HINDUNILVR28OCT25FUT", "name": "HINDUNILVR", "company": "Hindustan Unilever Ltd", "weight": 1.98},
-    "52568": {"symbol": "WIPRO28OCT25FUT", "name": "WIPRO", "company": "Wipro Ltd", "weight": 0.6},
-    "52176": {"symbol": "ADANIPORTS28OCT25FUT", "name": "ADANIPORTS", "company": "Adani Ports and Special Economic Zone Ltd", "weight": 0.92},
-    "52223": {"symbol": "AXISBANK28OCT25FUT", "name": "AXISBANK", "company": "Axis Bank Ltd", "weight": 2.96},
-    "52446": {"symbol": "M&M28OCT25FUT", "name": "M&M", "company": "Mahindra & Mahindra Ltd", "weight": 2.69},
-    "52466": {"symbol": "NESTLEIND28OCT25FUT", "name": "NESTLEIND", "company": "Nestle India Ltd", "weight": 0.73},
-    "52542": {"symbol": "TECHM28OCT25FUT", "name": "TECHM", "company": "Tech Mahindra Ltd", "weight": 0.78},
-    "52545": {"symbol": "TITAN28OCT25FUT", "name": "TITAN", "company": "Titan Company Ltd", "weight": 1.25},
-    "52241": {"symbol": "BAJFINANCE28OCT25FUT", "name": "BAJFINANCE", "company": "Bajaj Finance Ltd", "weight": 2.3},
-    "52307": {"symbol": "CIPLA28OCT25FUT", "name": "CIPLA", "company": "Cipla Ltd", "weight": 0.75},
-    "52337": {"symbol": "EICHERMOT28OCT25FUT", "name": "EICHERMOT", "company": "Eicher Motors Ltd", "weight": 0.84},
-    "52365": {"symbol": "HDFCLIFE28OCT25FUT", "name": "HDFCLIFE", "company": "HDFC Life Insurance Co Ltd", "weight": 0.71},
-    "52368": {"symbol": "HINDALCO28OCT25FUT", "name": "HINDALCO", "company": "Hindalco Industries Ltd", "weight": 0.99},
-    "52398": {"symbol": "INFY28OCT25FUT", "name": "INFY", "company": "Infosys Ltd", "weight": 4.56},
-    "52513": {"symbol": "SBILIFE28OCT25FUT", "name": "SBILIFE", "company": "SBI Life Insurance Company Ltd", "weight": 0.7},
-    "52514": {"symbol": "SBIN28OCT25FUT", "name": "SBIN", "company": "State Bank of India", "weight": 3.16},
-    "52216": {"symbol": "ASIANPAINT28OCT25FUT", "name": "ASIANPAINT", "company": "Asian Paints Ltd", "weight": 0.93},
-    "52276": {"symbol": "BHARTIARTL28OCT25FUT", "name": "BHARTIARTL", "company": "Bharti Airtel Ltd", "weight": 4.53},
-    "52362": {"symbol": "HCLTECH28OCT25FUT", "name": "HCLTECH", "company": "HCL Technologies Ltd", "weight": 1.29},
-    "52418": {"symbol": "JIOFIN28OCT25FUT", "name": "JIOFIN", "company": "Jio Financial Services Ltd", "weight": 0.87},
-    "52489": {"symbol": "ONGC28OCT25FUT", "name": "ONGC", "company": "Oil & Natural Gas Corporation Ltd", "weight": 0.83},
-    "52527": {"symbol": "TATACONSUM28OCT25FUT", "name": "TATACONSUM", "company": "Tata Consumer Products Ltd", "weight": 0.65},
-    "52534": {"symbol": "TATASTEEL28OCT25FUT", "name": "TATASTEEL", "company": "Tata Steel Ltd", "weight": 1.25},
-    "52174": {"symbol": "ADANIENT28OCT25FUT", "name": "ADANIENT", "company": "Adani Enterprises Ltd", "weight": 0.59},
-    "52214": {"symbol": "APOLLOHOSP28OCT25FUT", "name": "APOLLOHOSP", "company": "Apollo Hospitals Enterprise Ltd", "weight": 0.66},
-    "52308": {"symbol": "COALINDIA28OCT25FUT", "name": "COALINDIA", "company": "Coal India Ltd", "weight": 0.76},
-    "52336": {"symbol": "DRREDDY28OCT25FUT", "name": "DRREDDY", "company": "Dr Reddys Laboratories Ltd", "weight": 0.67},
-    "52364": {"symbol": "HDFCBANK28OCT25FUT", "name": "HDFCBANK", "company": "HDFC Bank Ltd", "weight": 12.91},
-    "52414": {"symbol": "ITC28OCT25FUT", "name": "ITC", "company": "ITC Ltd", "weight": 3.41},
-    "52430": {"symbol": "KOTAKBANK28OCT25FUT", "name": "KOTAKBANK", "company": "Kotak Mahindra Bank Ltd", "weight": 2.71},
-    "52516": {"symbol": "SHRIRAMFIN28OCT25FUT", "name": "SHRIRAMFIN", "company": "Shriram Finance Ltd", "weight": 0.79},
+    "48574": {"symbol": "BAJAJFINSV25NOV25FUT", "name": "BAJAJFINSV", "company": "Bajaj Finserv Ltd", "weight": 1.0},
+    "48587": {"symbol": "BHARTIARTL25NOV25FUT", "name": "BHARTIARTL", "company": "Bharti Airtel Ltd", "weight": 4.53},
+    "48607": {"symbol": "CIPLA25NOV25FUT", "name": "CIPLA", "company": "Cipla Ltd", "weight": 0.75},
+    "48632": {"symbol": "DRREDDY25NOV25FUT", "name": "DRREDDY", "company": "Dr Reddys Laboratories Ltd", "weight": 0.67},
+    "49073": {"symbol": "POWERGRID25NOV25FUT", "name": "POWERGRID", "company": "Power Grid Corporation of India Ltd", "weight": 1.15},
+    "38317": {"symbol": "ADANIENT25NOV25FUT", "name": "ADANIENT", "company": "Adani Enterprises Ltd", "weight": 0.59},
+    "44173": {"symbol": "APOLLOHOSP25NOV25FUT", "name": "APOLLOHOSP", "company": "Apollo Hospitals Enterprise Ltd", "weight": 0.66},
+    "48575": {"symbol": "BAJFINANCE25NOV25FUT", "name": "BAJFINANCE", "company": "Bajaj Finance Ltd", "weight": 2.3},
+    "48633": {"symbol": "EICHERMOT25NOV25FUT", "name": "EICHERMOT", "company": "Eicher Motors Ltd", "weight": 0.84},
+    "48652": {"symbol": "HDFCBANK25NOV25FUT", "name": "HDFCBANK", "company": "HDFC Bank Ltd", "weight": 12.91},
+    "48657": {"symbol": "HDFCLIFE25NOV25FUT", "name": "HDFCLIFE", "company": "HDFC Life Insurance Co Ltd", "weight": 0.71},
+    "48858": {"symbol": "KOTAKBANK25NOV25FUT", "name": "KOTAKBANK", "company": "Kotak Mahindra Bank Ltd", "weight": 2.71},
+    "48874": {"symbol": "LT25NOV25FUT", "name": "LT", "company": "Larsen & Toubro Ltd", "weight": 3.84},
+    "48892": {"symbol": "MARUTI25NOV25FUT", "name": "MARUTI", "company": "Maruti Suzuki India Ltd", "weight": 1.82},
+    "48896": {"symbol": "MAXHEALTH25NOV25FUT", "name": "MAXHEALTH", "company": "Max Healthcare Institute Ltd", "weight": 0.7},
+    "46477": {"symbol": "AXISBANK25NOV25FUT", "name": "AXISBANK", "company": "Axis Bank Ltd", "weight": 2.96},
+    "48817": {"symbol": "JSWSTEEL25NOV25FUT", "name": "JSWSTEEL", "company": "JSW Steel Ltd", "weight": 0.95},
+    "48887": {"symbol": "M&M25NOV25FUT", "name": "M&M", "company": "Mahindra & Mahindra Ltd", "weight": 2.69},
+    "49109": {"symbol": "TATAMOTORS25NOV25FUT", "name": "TATAMOTORS", "company": "Tata Motors Ltd", "weight": 1.31},
+    "49134": {"symbol": "TRENT25NOV25FUT", "name": "TRENT", "company": "Trent Ltd", "weight": 0.94},
+    "49093": {"symbol": "SUNPHARMA25NOV25FUT", "name": "SUNPHARMA", "company": "Sun Pharmaceutical Industries Ltd", "weight": 1.51},
+    "48643": {"symbol": "GRASIM25NOV25FUT", "name": "GRASIM", "company": "Grasim Industries Ltd", "weight": 0.93},
+    "48783": {"symbol": "INFY25NOV25FUT", "name": "INFY", "company": "Infosys Ltd", "weight": 4.56},
+    "48811": {"symbol": "JIOFIN25NOV25FUT", "name": "JIOFIN", "company": "Jio Financial Services Ltd", "weight": 0.87},
+    "48921": {"symbol": "NESTLEIND25NOV25FUT", "name": "NESTLEIND", "company": "Nestle India Ltd", "weight": 0.73},
+    "49097": {"symbol": "TATACONSUM25NOV25FUT", "name": "TATACONSUM", "company": "Tata Consumer Products Ltd", "weight": 0.65},
+    "49131": {"symbol": "TITAN25NOV25FUT", "name": "TITAN", "company": "Titan Company Ltd", "weight": 1.25},
+    "49170": {"symbol": "WIPRO25NOV25FUT", "name": "WIPRO", "company": "Wipro Ltd", "weight": 0.6},
+    "44179": {"symbol": "ASIANPAINT25NOV25FUT", "name": "ASIANPAINT", "company": "Asian Paints Ltd", "weight": 0.93},
+    "48582": {"symbol": "BEL25NOV25FUT", "name": "BEL", "company": "Bharat Electronics Ltd", "weight": 1.29},
+    "48650": {"symbol": "HCLTECH25NOV25FUT", "name": "HCLTECH", "company": "HCL Technologies Ltd", "weight": 1.29},
+    "48750": {"symbol": "INDIGO25NOV25FUT", "name": "INDIGO", "company": "InterGlobe Aviation Ltd", "weight": 1.08},
+    "49086": {"symbol": "SBIN25NOV25FUT", "name": "SBIN", "company": "State Bank of India", "weight": 3.16},
+    "49088": {"symbol": "SHRIRAMFIN25NOV25FUT", "name": "SHRIRAMFIN", "company": "Shriram Finance Ltd", "weight": 0.79},
+    "49126": {"symbol": "TECHM25NOV25FUT", "name": "TECHM", "company": "Tech Mahindra Ltd", "weight": 0.78},
+    "48803": {"symbol": "ITC25NOV25FUT", "name": "ITC", "company": "ITC Ltd", "weight": 3.41},
+    "48694": {"symbol": "HINDUNILVR25NOV25FUT", "name": "HINDUNILVR", "company": "Hindustan Unilever Ltd", "weight": 1.98},
+    "49078": {"symbol": "RELIANCE25NOV25FUT", "name": "RELIANCE", "company": "Reliance Industries Ltd", "weight": 8.08},
+    "49136": {"symbol": "ULTRACEMCO25NOV25FUT", "name": "ULTRACEMCO", "company": "UltraTech Cement Ltd", "weight": 1.25},
+    "49054": {"symbol": "ONGC25NOV25FUT", "name": "ONGC", "company": "Oil & Natural Gas Corporation Ltd", "weight": 0.83},
+    "49085": {"symbol": "SBILIFE25NOV25FUT", "name": "SBILIFE", "company": "SBI Life Insurance Company Ltd", "weight": 0.7},
+    "49119": {"symbol": "TCS25NOV25FUT", "name": "TCS", "company": "Tata Consultancy Services Ltd", "weight": 2.6},
+    "39029": {"symbol": "ADANIPORTS25NOV25FUT", "name": "ADANIPORTS", "company": "Adani Ports and Special Economic Zone Ltd", "weight": 0.92},
+    "48608": {"symbol": "COALINDIA25NOV25FUT", "name": "COALINDIA", "company": "Coal India Ltd", "weight": 0.76},
+    "48672": {"symbol": "HINDALCO25NOV25FUT", "name": "HINDALCO", "company": "Hindalco Industries Ltd", "weight": 0.99},
+    "48960": {"symbol": "NTPC25NOV25FUT", "name": "NTPC", "company": "NTPC Ltd", "weight": 1.42},
+    "49115": {"symbol": "TATASTEEL25NOV25FUT", "name": "TATASTEEL", "company": "Tata Steel Ltd", "weight": 1.25},
 }
 # Bank Nifty Futures Token Mapping (October 28, 2025 Expiry) - COMPLETE 12 FUTURES  
 BANK_NIFTY_FUTURES = {
-    "52340": {"symbol": "FEDERALBNK28OCT25FUT", "name": "FEDERALBNK", "company": "Federal Bank Ltd", "weight": 1.25},
-    "52256": {"symbol": "BANKBARODA28OCT25FUT", "name": "BANKBARODA", "company": "Bank of Baroda", "weight": 1.29},
-    "52218": {"symbol": "AUBANK28OCT25FUT", "name": "AUBANK", "company": "AU Small Finance Bank Ltd", "weight": 1.11},
-    "52223": {"symbol": "AXISBANK28OCT25FUT", "name": "AXISBANK", "company": "Axis Bank Ltd", "weight": 8.97},
-    "52374": {"symbol": "ICICIBANK28OCT25FUT", "name": "ICICIBANK", "company": "ICICI Bank Ltd", "weight": 25.84},
-    "52380": {"symbol": "IDFCFIRSTB28OCT25FUT", "name": "IDFCFIRSTB", "company": "IDFC First Bank Ltd", "weight": 1.21},
-    "52394": {"symbol": "INDUSINDBK28OCT25FUT", "name": "INDUSINDBK", "company": "IndusInd Bank Ltd", "weight": 1.31},
-    "52514": {"symbol": "SBIN28OCT25FUT", "name": "SBIN", "company": "State Bank of India", "weight": 9.56},
-    "52303": {"symbol": "CANBK28OCT25FUT", "name": "CANBK", "company": "Canara Bank", "weight": 1.13},
-    "52500": {"symbol": "PNB28OCT25FUT", "name": "PNB", "company": "Punjab National Bank", "weight": 1.05},
-    "52364": {"symbol": "HDFCBANK28OCT25FUT", "name": "HDFCBANK", "company": "HDFC Bank Ltd", "weight": 39.1},
-    "52430": {"symbol": "KOTAKBANK28OCT25FUT", "name": "KOTAKBANK", "company": "Kotak Mahindra Bank Ltd", "weight": 8.19},
+    "46472": {"symbol": "AUBANK25NOV25FUT", "name": "AUBANK", "company": "AU Small Finance Bank Ltd", "weight": 1.11},
+    "48602": {"symbol": "CANBK25NOV25FUT", "name": "CANBK", "company": "Canara Bank", "weight": 1.13},
+    "48652": {"symbol": "HDFCBANK25NOV25FUT", "name": "HDFCBANK", "company": "HDFC Bank Ltd", "weight": 39.1},
+    "48858": {"symbol": "KOTAKBANK25NOV25FUT", "name": "KOTAKBANK", "company": "Kotak Mahindra Bank Ltd", "weight": 8.19},
+    "46477": {"symbol": "AXISBANK25NOV25FUT", "name": "AXISBANK", "company": "Axis Bank Ltd", "weight": 8.97},
+    "48751": {"symbol": "INDUSINDBK25NOV25FUT", "name": "INDUSINDBK", "company": "IndusInd Bank Ltd", "weight": 1.31},
+    "48734": {"symbol": "IDFCFIRSTB25NOV25FUT", "name": "IDFCFIRSTB", "company": "IDFC First Bank Ltd", "weight": 1.21},
+    "48636": {"symbol": "FEDERALBNK25NOV25FUT", "name": "FEDERALBNK", "company": "Federal Bank Ltd", "weight": 1.25},
+    "49086": {"symbol": "SBIN25NOV25FUT", "name": "SBIN", "company": "State Bank of India", "weight": 9.56},
+    "49067": {"symbol": "PNB25NOV25FUT", "name": "PNB", "company": "Punjab National Bank", "weight": 1.05},
+    "48579": {"symbol": "BANKBARODA25NOV25FUT", "name": "BANKBARODA", "company": "Bank of Baroda", "weight": 1.29},
+    "48707": {"symbol": "ICICIBANK25NOV25FUT", "name": "ICICIBANK", "company": "ICICI Bank Ltd", "weight": 25.84},
 }
 
 def authenticate():
@@ -2140,23 +2155,7 @@ def get_composite_meter():
         bank_composite = (bank_oi + bank_pa) / 2
 
         # Send Telegram alert automatically
-        try:
-            nifty_oi_dir = 'UP' if nifty_oi > 0.5 else 'DOWN'
-            bank_oi_dir = 'UP' if bank_oi > 0.5 else 'DOWN'
-            nifty_pa_dir = 'UP' if nifty_pa > 0.5 else 'DOWN'
-            bank_pa_dir = 'UP' if bank_pa > 0.5 else 'DOWN'
-            msg = (
-                f"*Enhanced Meter Alert*\n"
-                f"NIFTY Composite: `{nifty_composite}`\n"
-                f"Bank NIFTY Composite: `{bank_composite}`\n"
-                f"NIFTY OI: `{nifty_oi}` ({nifty_oi_dir})\n"
-                f"Bank NIFTY OI: `{bank_oi}` ({bank_oi_dir})\n"
-                f"NIFTY Price: `{nifty_pa}` ({nifty_pa_dir})\n"
-                f"Bank NIFTY Price: `{bank_pa}` ({bank_pa_dir})\n"
-            )
-            send_telegram_alert(msg)
-        except Exception as e:
-            print(f"❌ Error sending auto Telegram alert: {e}")
+        # ...removed Telegram alert functionality...
         
 
         # Simple momentum (compare with previous if available, no defaults)
