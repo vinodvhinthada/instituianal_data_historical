@@ -58,39 +58,7 @@ def fetch_market_data_current(tokens_dict, exchange="NSE"):
     except Exception as e:
         print(f"Error in fetch_market_data: {e}")
         return []
-# Function to push LTP for NIFTY and BANKNIFTY futures to Google Sheets (single row, separate columns)
-def push_index_futures_ltp_to_sheet():
-    if not GOOGLE_SHEETS_ENABLED or not sheets_client:
-        print("Google Sheets not enabled.")
-        return False
 
-    tokens = {
-        "37054": {"symbol": "NIFTY25NOV25FUT", "name": "NIFTY"},
-        "37051": {"symbol": "BANKNIFTY25NOV25FUT", "name": "BANKNIFTY"}
-    }
-
-    try:
-        sheet = sheets_client.open(SPREADSHEET_NAME).worksheet("IndexFuturesLTP")
-    except Exception:
-        sheet = sheets_client.open(SPREADSHEET_NAME).add_worksheet(title="IndexFuturesLTP", rows="10", cols="5")
-        sheet.append_row(["Timestamp", "ltp_nifty", "ltp_banknifty"])
-
-    fut_data = fetch_market_data_current(tokens, "NFO")
-    ltp_nifty = ''
-    ltp_banknifty = ''
-    for item in fut_data:
-        if item['token'] == "37054":
-            ltp_nifty = item.get('ltp', '')
-        elif item['token'] == "37051":
-            ltp_banknifty = item.get('ltp', '')
-    timestamp = get_ist_time().strftime('%Y-%m-%d %H:%M:%S')
-    sheet.append_row([
-        timestamp,
-        ltp_nifty,
-        ltp_banknifty
-    ])
-    print(f"✅ Pushed LTPs to sheet: NIFTY={ltp_nifty}, BANKNIFTY={ltp_banknifty}")
-    return True
 import os
 import requests
 # Telegram alert function
