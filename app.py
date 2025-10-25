@@ -249,9 +249,19 @@ BANK_NIFTY_WEIGHTS = {
 
 # 📊 Google Sheets Helper Functions
 def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_price_action=None):
-    # Fetch NIFTY and BANKNIFTY futures prices using their tokens
-    # Fetch and push LTP for NIFTY and BANKNIFTY futures
-    push_index_futures_ltp_to_sheet()
+    # Fetch LTP for NIFTY and BANKNIFTY futures
+    tokens = {
+        "37054": {"symbol": "NIFTY25NOV25FUT", "name": "NIFTY"},
+        "37051": {"symbol": "BANKNIFTY25NOV25FUT", "name": "BANKNIFTY"}
+    }
+    fut_data = fetch_market_data_current(tokens, "NFO")
+    nifty_fut_price = ''
+    banknifty_fut_price = ''
+    for item in fut_data:
+        if item['token'] == "37054":
+            nifty_fut_price = item.get('ltp', '')
+        elif item['token'] == "37051":
+            banknifty_fut_price = item.get('ltp', '')
     """Append current ISS and Price Action data to Google Sheets for historical tracking"""
     if not GOOGLE_SHEETS_ENABLED or not sheets_client:
         return False
@@ -268,7 +278,8 @@ def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_pr
                 'Timestamp', 'IST_Time', 'Nifty_ISS', 'Bank_ISS', 
                 'Nifty_Status', 'Bank_Status', 'Session',
                 'Nifty_Price_Action', 'Bank_Price_Action',
-                'Nifty_PA_Zone', 'Bank_PA_Zone'
+                'Nifty_PA_Zone', 'Bank_PA_Zone',
+                'LTP_NIFTY', 'LTP_BANKNIFTY'
             ])
             print(f"✅ Created new Google Sheet: {SPREADSHEET_NAME}")
         
@@ -319,8 +330,8 @@ def append_historical_data(nifty_iss, bank_iss, nifty_price_action=None, bank_pr
             nifty_status, bank_status, session,
             price_action_nifty, price_action_bank,
             nifty_pa_zone, bank_pa_zone,
-            nifty_fut_price if nifty_fut_price is not None else '',
-            banknifty_fut_price if banknifty_fut_price is not None else ''
+            nifty_fut_price,
+            banknifty_fut_price
         ])
         
         print(f"📊 Historical data saved: {timestamp} | Nifty: {nifty_iss:.3f} | Bank: {bank_iss:.3f}")
