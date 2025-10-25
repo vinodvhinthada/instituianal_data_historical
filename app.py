@@ -1,37 +1,95 @@
-# Function to push LTP for NIFTY and BANKNIFTY futures to Google Sheets
+# Function to fetch market data for given tokens (returns LTP)
+def fetch_market_data_current(tokens_dict, exchange="NSE"):
+    """Fetch market data for given tokens"""
+    if not cached_data['auth_token']:
+        if not authenticate():
+            return []
+    try:
+        headers = {
+            'Authorization': f'Bearer {cached_data["auth_token"]}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-UserType': 'USER',
+            'X-SourceID': 'WEB',
+            'X-ClientLocalIP': '192.168.1.1',
+            'X-ClientPublicIP': '192.168.1.1',
+            'X-MACAddress': '00:00:00:00:00:00',
+            'X-PrivateKey': API_KEY
+        }
+        market_data = []
+        tokens = list(tokens_dict.keys())
+        for i in range(0, len(tokens), 50):
+            batch_tokens = tokens[i:i+50]
+            request_data = {
+                "mode": "FULL",
+                "exchangeTokens": {
+                    exchange: batch_tokens
+                }
+            }
+            response = requests.post(MARKET_DATA_URL, json=request_data, headers=headers, timeout=30)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') and result.get('data'):
+                    fetched_data = result['data']['fetched']
+                    for item in fetched_data:
+                        if 'symbolToken' not in item:
+                            continue
+                        token_key = str(item['symbolToken'])
+                        if token_key in tokens_dict:
+                            stock_info = tokens_dict[token_key]
+                            if len(market_data) < 3:
+                                print(f"🔍 API Response Debug for {stock_info['symbol']}:")
+                                print(f"   Available fields: {list(item.keys())}")
+                                print(f"   opnInterest: {item.get('opnInterest', 'NOT_FOUND')}")
+                            processed_item = {
+                                'token': token_key,
+                                'symbol': stock_info['symbol'],
+                                'ltp': float(item.get('ltp', 0)),
+                            }
+                            market_data.append(processed_item)
+                        else:
+                            continue
+                else:
+                    continue
+            else:
+                continue
+            time.sleep(0.5)
+        return market_data
+    except Exception as e:
+        print(f"Error in fetch_market_data: {e}")
+        return []
+# Function to push LTP for NIFTY and BANKNIFTY futures to Google Sheets (single row, separate columns)
 def push_index_futures_ltp_to_sheet():
     if not GOOGLE_SHEETS_ENABLED or not sheets_client:
         print("Google Sheets not enabled.")
         return False
 
-    # Define tokens and symbols
-    tokens = [
-        {"token": "37054", "symbol": "NIFTY25NOV25FUT", "name": "NIFTY"},
-        {"token": "37051", "symbol": "BANKNIFTY25NOV25FUT", "name": "BANKNIFTY"}
-    ]
+    tokens = {
+        "37054": {"symbol": "NIFTY25NOV25FUT", "name": "NIFTY"},
+        "37051": {"symbol": "BANKNIFTY25NOV25FUT", "name": "BANKNIFTY"}
+    }
 
     try:
         sheet = sheets_client.open(SPREADSHEET_NAME).worksheet("IndexFuturesLTP")
     except Exception:
-        # Create worksheet if not exists
         sheet = sheets_client.open(SPREADSHEET_NAME).add_worksheet(title="IndexFuturesLTP", rows="10", cols="5")
-        sheet.append_row(["Timestamp", "Token", "Symbol", "Name", "LTP"])
+        sheet.append_row(["Timestamp", "ltp_nifty", "ltp_banknifty"])
 
-    for info in tokens:
-        # Fetch market data for each token
-        fut_data = fetch_market_data({info["token"]: {"symbol": info["symbol"], "name": info["name"]}}, "NFO")
-        ltp = None
-        if fut_data and isinstance(fut_data, list) and len(fut_data) > 0:
-            ltp = fut_data[0].get('ltp', None)
-        timestamp = get_ist_time().strftime('%Y-%m-%d %H:%M:%S')
-        sheet.append_row([
-            timestamp,
-            info["token"],
-            info["symbol"],
-            info["name"],
-            ltp if ltp is not None else ''
-        ])
-        print(f"✅ Pushed LTP for {info['symbol']} to sheet: {ltp}")
+    fut_data = fetch_market_data_current(tokens, "NFO")
+    ltp_nifty = ''
+    ltp_banknifty = ''
+    for item in fut_data:
+        if item['token'] == "37054":
+            ltp_nifty = item.get('ltp', '')
+        elif item['token'] == "37051":
+            ltp_banknifty = item.get('ltp', '')
+    timestamp = get_ist_time().strftime('%Y-%m-%d %H:%M:%S')
+    sheet.append_row([
+        timestamp,
+        ltp_nifty,
+        ltp_banknifty
+    ])
+    print(f"✅ Pushed LTPs to sheet: NIFTY={ltp_nifty}, BANKNIFTY={ltp_banknifty}")
     return True
 import os
 import requests
