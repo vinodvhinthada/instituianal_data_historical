@@ -1,3 +1,38 @@
+# Function to push LTP for NIFTY and BANKNIFTY futures to Google Sheets
+def push_index_futures_ltp_to_sheet():
+    if not GOOGLE_SHEETS_ENABLED or not sheets_client:
+        print("Google Sheets not enabled.")
+        return False
+
+    # Define tokens and symbols
+    tokens = [
+        {"token": "37054", "symbol": "NIFTY25NOV25FUT", "name": "NIFTY"},
+        {"token": "37051", "symbol": "BANKNIFTY25NOV25FUT", "name": "BANKNIFTY"}
+    ]
+
+    try:
+        sheet = sheets_client.open(SPREADSHEET_NAME).worksheet("IndexFuturesLTP")
+    except Exception:
+        # Create worksheet if not exists
+        sheet = sheets_client.open(SPREADSHEET_NAME).add_worksheet(title="IndexFuturesLTP", rows="10", cols="5")
+        sheet.append_row(["Timestamp", "Token", "Symbol", "Name", "LTP"])
+
+    for info in tokens:
+        # Fetch market data for each token
+        fut_data = fetch_market_data({info["token"]: {"symbol": info["symbol"], "name": info["name"]}}, "NFO")
+        ltp = None
+        if fut_data and isinstance(fut_data, list) and len(fut_data) > 0:
+            ltp = fut_data[0].get('ltp', None)
+        timestamp = get_ist_time().strftime('%Y-%m-%d %H:%M:%S')
+        sheet.append_row([
+            timestamp,
+            info["token"],
+            info["symbol"],
+            info["name"],
+            ltp if ltp is not None else ''
+        ])
+        print(f"✅ Pushed LTP for {info['symbol']} to sheet: {ltp}")
+    return True
 import os
 import requests
 # Telegram alert function
