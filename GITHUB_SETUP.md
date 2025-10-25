@@ -61,10 +61,7 @@ git push -u origin main
    ```
 5. Add Environment Variables:
    ```
-   API_KEY=tKo2xsA5
-   USERNAME=C125633
-   PASSWORD=4111
-   TOTP_TOKEN=TZZ2VTRBUWPB33SLOSA3NXSGWA
+
    ```
 6. Click **"Deploy"**
 
@@ -103,4 +100,5 @@ Your clean, professional codebase is ready for GitHub and Render deployment. The
 **Next Steps:**
 1. Upload the `deploy` folder contents to GitHub
 2. Deploy to Render using the guide
+
 3. Enjoy your live market data dashboard! 🚀
