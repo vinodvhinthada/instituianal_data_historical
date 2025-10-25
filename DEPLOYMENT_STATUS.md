@@ -52,10 +52,7 @@
 ## Environment Variables Setup
 Set these in Render dashboard:
 ```
-API_KEY=tKo2xsA5
-USERNAME=C125633
-PASSWORD=4111
-TOTP_TOKEN=TZZ2VTRBUWPB33SLOSA3NXSGWA
+
 ```
 
 ## Render Configuration
@@ -123,5 +120,6 @@ All components are complete and tested. The webapp is ready to be deployed to Re
 ✅ Multiple market segments  
 ✅ Mobile responsiveness  
 ✅ Production configuration  
+
 
 **Next Action**: Deploy to Render using the provided configuration.
